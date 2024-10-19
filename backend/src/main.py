@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from image_processing import process_image_blur
 import io
+import uvicorn
 
 app = FastAPI()
 
@@ -42,6 +43,4 @@ async def apply_blur(file: UploadFile = File(...)):
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
