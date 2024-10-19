@@ -1,25 +1,96 @@
-# Frontend
+# WebApp Base Project
 
-## Setup
-First download and install Node.js (https://nodejs.org/en/download/).
-After installing open the project directory and run:
-```sh
-npm install
+This project is a simple web application consisting of a **frontend** (using Vue 3 and Vuetify) and a **backend** (using FastAPI).  
+The frontend lets you upload images and apply a blur effect to them.
+
+## Prerequisites
+
+- **Node.js** (for the frontend) - [Download here](https://nodejs.org/en/download/)
+- **Python 3.10+** (for the backend) - [Download here](https://www.python.org/downloads/)
+- **Conda** (for environment management) - [Install here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/)
+
+---
+
+## Setup Instructions
+
+### 1. Backend Setup
+
+1. **Navigate to the backend folder:**
+   ```sh
+   cd backend
+   ```
+
+2. **Set up the Python environment:**
+   If you're using Conda, create and activate the environment:
+   ```sh
+   conda create --name simple-webapp python=3.10
+   conda activate simple-webapp
+   ```
+
+3. **Install dependencies:**
+   ```sh
+   pip install -r requirements.txt
+   ```
+
+4. **Run the backend server:**
+   ```sh
+   cd src
+   python main.py
+   ```
+
+   Your backend should now be running at `http://localhost:8000`.
+
+---
+
+### 2. Frontend Setup
+
+1. **Navigate to the frontend folder:**
+   ```sh
+   cd frontend
+   ```
+
+2. **Install the dependencies:**
+   ```sh
+   npm install
+   ```
+
+3. **Start the development server:**
+   ```sh
+   npm run dev
+   ```
+
+   Your frontend should now be running at `http://localhost:[PORT]`.
+
+---
+
+## Project Structure
+
+```
+webapp-base-project/
+├─ backend/
+│  ├─ requirements.txt            # Backend dependencies
+│  └─ src/
+│     ├─ image_processing.py       # Image processing logic (e.g., blur effect)
+│     └─ main.py                   # FastAPI entry point
+├─ frontend/
+│  ├─ index.html                   # HTML entry point for the frontend
+│  ├─ package.json                 # Frontend dependencies and project details
+│  ├─ src/
+│  │  ├─ App.vue                   # Root Vue component
+│  │  ├─ assets/                   # Static assets like CSS, images
+│  │  ├─ components/               # Vue components
+│  │  │  ├─ GalleryComponent.vue   # Component for displaying image gallery
+│  │  │  └─ MainComponent.vue      # Component for image upload and blur functionality
+│  │  ├─ main.js                   # Frontend entry point
+│  │  ├─ router/
+│  │  │  └─ index.js               # Vue Router configuration
+│  │  ├─ store.js                  # Global store for state management
+│  │  └─ views/                    # Vue views (pages)
+│  └─ vite.config.js               # Vite configuration for building the frontend
+└─ README.md                       
 ```
 
-### Compile and Run
-```sh
-npm run dev
-```
-
-# Backend
-
-## Creating environment
-- conda env create -f environment.yml
-- conda activate chatbot
-
-## Downloading model
-Download the LLaMA GGUF model weights from the HuggingFace [https://huggingface.co/openai/clip-vit-base-patch32/tree/main] and store the file in the assest/model folder.
-
-## Running code
-uvicorn main:app --port 8804 --reload
+## Useful links
+- **Vue3 Introduction:** https://vuejs.org/guide/introduction.html
+- **Vuetify Documentation:** https://vuetifyjs.com/en/components/buttons/#usage
+- **FastAPI Examples:** https://fastapi.tiangolo.com/tutorial/first-steps/
