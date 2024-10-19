@@ -1,0 +1,23 @@
+@import './base.css';
+
+#app {
+  font-weight: normal;
+  background-color: hsl(0, 0%, 100%);
+}
+
+a,
+.black {
+  text-decoration: none;
+  color: rgb(0, 0, 0);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+.centerDev {
+  justify-content: center;
+  justify-self: center;
+  justify-items: center;
+  align-self: center;
+  align-items: center;
+  align-content: center;
+}
