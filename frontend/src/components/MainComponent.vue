@@ -4,70 +4,55 @@ import axios from 'axios';
 import { store } from '../store'; // Import shared store to manage global state
 
 // Reactive references
-const uploadedImage = ref(null); // Stores the local URL of the uploaded image
-const blurredImage = ref(null); // Stores the URL of the blurred image returned from the backend
+const fileBlob = ref(null); // Store the image as a Blob (either from upload or gallery)
+const blurredImage = ref(null); // Stores the blurred image from the backend
 const isLoading = ref(false);  // Boolean to show a loading spinner while the image is being processed
-const displayedImage = ref(null); // New ref to handle which image is currently displayed
-const uploadedFile = ref(null); // Store the uploaded file separately
+const displayedImage = ref(null); // Handles the image currently displayed (original/blurred)
 
-// Watch for changes in the selected image from the global store
+// Watch for changes in the selected image from the gallery
 watch(
   () => store.selectedImage,
-  (newImage) => {
+  async (newImage) => {
     if (newImage) {
-      console.log("New image selected:", newImage);
-      uploadedImage.value = newImage;
-      displayedImage.value = newImage; // Set the displayed image
+      console.log("New image selected from gallery:", newImage);
+      const response = await fetch(newImage);
+      fileBlob.value = await response.blob();  // Convert gallery image to blob
+      displayedImage.value = newImage; // Display the selected image
       blurredImage.value = null;
-      uploadedFile.value = null; // Clear any previous file reference if selected from gallery
     }
   },
   { immediate: true }
 );
 
+// Handle image upload
 const handleImageUpload = (event) => {
   const file = event.target.files[0];
   if (file) {
-    const imageUrl = URL.createObjectURL(file);
-    uploadedImage.value = imageUrl;
-    displayedImage.value = imageUrl; // Update displayed image
-    blurredImage.value = null; // Clear the blurred image when a new image is uploaded
-    uploadedFile.value = file; // Store the file object
-    store.photoUrls.push(imageUrl); // Store the uploaded base photo in the global store
+    fileBlob.value = file; // Store the uploaded file as a Blob
+    displayedImage.value = URL.createObjectURL(file); // Display the uploaded image
+    blurredImage.value = null;
+    store.photoUrls.push(displayedImage.value); // Store the uploaded image in the global store
   }
 };
 
-// Function to send the uploaded image to the backend and apply a blur effect
+// Send the uploaded image to the backend and apply a blur effect
 const applyBlur = async () => {
-  if (!uploadedImage.value) return;
+  if (!fileBlob.value) return;
 
   // Show the loading spinner while the image is being processed
   isLoading.value = true;
   try {
-    let formData = new FormData();
-
-    // If there's an uploaded file, use it
-    if (uploadedFile.value) {
-      formData.append('file', uploadedFile.value);  // Upload the file
-    } else {
-      // If the image is selected from the gallery (URL), fetch the image data from the URL
-      const response = await fetch(uploadedImage.value);
-      const blob = await response.blob();
-      formData.append('file', blob, 'gallery-image.png');  // Send as a blob
-    }
+    const formData = new FormData();
+    formData.append('file', fileBlob.value);  // Send the blob
 
     // Make a POST request to the backend API to apply the blur effect
     const response = await axios.post(`${store.apiUrl}/apply-blur`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      responseType: 'blob'  // Expect the response as binary data (blob)
+      responseType: 'blob'  // Expect binary data (blob)
     });
 
-    // Create an object URL from the response data (blob) and set it as the blurred image
-    const imageUrl = URL.createObjectURL(response.data); // Create a URL for the blob response
-    blurredImage.value = imageUrl;
-    displayedImage.value = imageUrl;  // Set the displayed image to the blurred version
+    // Update the blurred image
+    blurredImage.value = URL.createObjectURL(response.data);
+    displayedImage.value = blurredImage.value;
   } catch (error) {
     console.error('Failed to apply blur:', error);
   } finally {
@@ -75,29 +60,22 @@ const applyBlur = async () => {
   }
 };
 
-// Function to trigger the file input dialog when the image field is clicked
-const openFileDialog = () => {
-  const fileInput = document.querySelector('input[type="file"]');
-  if (fileInput) fileInput.click();
-};
+// Trigger the file input dialog when the image field is clicked
+const openFileDialog = () => document.querySelector('input[type="file"]').click();
 
-// Function to toggle between original and blurred image
+// Toggle between original and blurred image
 const toggleImage = () => {
   if (blurredImage.value && !isLoading.value) {
-    displayedImage.value = displayedImage.value === blurredImage.value ? uploadedImage.value : blurredImage.value;
+    displayedImage.value = displayedImage.value === blurredImage.value ? URL.createObjectURL(fileBlob.value) : blurredImage.value;
   }
 };
 
-// Function to reset the image when "X" button is clicked
+// Reset image when 'X' is clicked
 const resetImage = () => {
-  uploadedImage.value = null;
+  fileBlob.value = null;
   blurredImage.value = null;
   displayedImage.value = null;
-  uploadedFile.value = null;  // Reset the uploaded file
-  const fileInput = document.querySelector('input[type="file"]');
-  if (fileInput) {
-    fileInput.value = '';  // Clear the file input
-  }
+  document.querySelector('input[type="file"]').value = '';
 };
 </script>
 
@@ -123,7 +101,7 @@ const resetImage = () => {
                 <v-img v-if="displayedImage" :src="displayedImage" max-height="300" contain @click.stop="toggleImage"
                   :class="{ 'clickable': blurredImage && !isLoading }">
                   <!-- "X" button to reset the image -->
-                  <v-btn v-if="blurredImage" icon density="compact" class="reset-btn ma-2" @click="resetImage"
+                  <v-btn v-if="displayedImage" icon density="compact" class="reset-btn ma-2" @click="resetImage"
                     color="red">
                     <v-icon small>mdi-close</v-icon>
                   </v-btn>
@@ -138,11 +116,10 @@ const resetImage = () => {
           </v-col>
           <!-- Apply Blur Button with Icon -->
           <v-col cols="12" md="3" class="text-center">
-            <v-btn color="primary" @click="applyBlur" :disabled="!uploadedImage || isLoading" block>
+            <v-btn color="primary" @click="applyBlur" :disabled="!fileBlob || isLoading" block>
               <v-icon left>mdi-upload</v-icon>
               Apply Blur
             </v-btn>
-            <!-- Additional instruction text when blurred image is available -->
             <div v-if="blurredImage && !isLoading" class="mt-2 text-caption">
               Click the image to toggle between original and blurred versions
             </div>
@@ -199,7 +176,6 @@ const resetImage = () => {
   position: absolute;
   top: 6px;
   right: 6px;
-  font-size: 16px;
 }
 
 .clickable {
