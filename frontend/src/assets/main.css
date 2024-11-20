@@ -21,3 +21,8 @@ a,
   align-items: center;
   align-content: center;
 }
+
+.video {
+  width: 100%;
+  height: auto;
+}

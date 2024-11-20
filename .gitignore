@@ -29,3 +29,6 @@ coverage
 # Python 
 *.pyc
 *cpython-310.pyc
+
+# Other
+*.mp4

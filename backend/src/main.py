@@ -1,11 +1,16 @@
+import io
+
+import static_ffmpeg
+import uvicorn
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
+
 from image_processing import process_image_blur
-import io
-import uvicorn
+from video_details import get_video_details
 
 app = FastAPI()
+static_ffmpeg.add_paths()
 
 # CORS middleware configuration
 app.add_middleware(
@@ -39,6 +44,19 @@ async def apply_blur(file: UploadFile = File(...)):
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to process image", "error": str(e)},
+        )
+
+
+@app.post("/video-details")
+async def video_details(file: UploadFile = File(...)):
+    try:
+        print(type(file))
+        details = await get_video_details(file)
+        return JSONResponse(status_code=200, content=details)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to get video details", "error": str(e)},
         )
 
 

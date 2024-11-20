@@ -4,41 +4,35 @@ import { store } from '../store';// Import the global store to access shared sta
 import { useRouter } from 'vue-router'; // Import Vue Router for navigation
 
 // Reactive reference to hold the list of images
-const images = ref([]);
+const videos = ref([]);
 const router = useRouter(); // Initialize the router
 
 // onMounted lifecycle hook to fetch images when the component is mounted
 onMounted(() => {
-    images.value = store.photoUrls;
+    videos.value = store.videoUrls;
 });
 
 // Function to handle image click and navigate to the main view
-const handleImageClick = (imageSrc) => {
-    store.selectedImage = imageSrc; // Set the selected image in the store
+const handleVideoClick = (videoSrc) => {
+    store.selectedVideo = videoSrc; // Set the selected image in the store
     router.push('/'); // Navigate to the main view
 };
 </script>
 
 <template>
-    <!-- Gallery container -->
-    <div class="gallery px-4 py-4">
-        <!-- Vuetify grid to organize images -->
-        <v-row dense>
-            <!-- Loop through the images array and display each image -->
-            <v-col v-for="(imgSrc, index) in images" :key="index" class="d-flex child-flex" cols="12" sm="6" md="4"
-                lg="3" xl="2">
-                <!-- Display each image with Vuetify's v-img component -->
-                <v-img :src="imgSrc" aspect-ratio="1.67" class="mb-4 clickable-image" @click="handleImageClick(imgSrc)">
-                    <!-- Show a loading spinner while the image is loading -->
-                    <template v-slot:placeholder>
-                        <v-row align="center" class="fill-height ma-0" justify="center">
-                            <v-progress-circular color="grey-lighten-5" indeterminate></v-progress-circular>
-                        </v-row>
-                    </template>
-                </v-img>
-            </v-col>
-        </v-row>
-    </div>
+  <!-- Gallery container -->
+  <div class="gallery px-4 py-4">
+      <!-- Vuetify grid to organize images -->
+    <v-row dense>
+      <v-col v-for="(vidSrc, index) in videos" :key="index" class="d-flex child-flex" cols="12" sm="8" md="6" lg="4" xl="4">
+        <div class="rounded border pa-5 video-container">
+          <video class="video" @click="handleVideoClick(vidSrc)">
+            <source :src="vidSrc" type="video/mp4">
+          </video>
+        </div>
+      </v-col>
+    </v-row>
+  </div>
 </template>
 
 <style scoped>
@@ -48,14 +42,16 @@ const handleImageClick = (imageSrc) => {
     justify-content: center;
 }
 
-.v-img {
-    border-radius: 12px;
-    cursor: pointer;
-    transition: transform 0.3s ease-in-out;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.video-container {
+  height: auto;
+  width: 400px;
+  cursor: pointer;
+  transition: transform 0.3s ease-in-out;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
 }
 
-.v-img:hover {
+.video-container:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
 }
