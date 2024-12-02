@@ -32,3 +32,5 @@ coverage
 
 # Other
 *.mp4
+/backend/src/checkpoints
+/backend/src/configs

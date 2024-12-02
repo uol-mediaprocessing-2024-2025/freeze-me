@@ -1,13 +1,18 @@
-import io
+import os
 
 import static_ffmpeg
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse
 
-from image_processing import process_image_blur
-from video_details import get_video_details
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+
+from video_editing import get_video_details
 
 app = FastAPI()
 static_ffmpeg.add_paths()
@@ -21,36 +26,22 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-
-@app.post("/apply-blur")
-async def apply_blur(file: UploadFile = File(...)):
-    """
-    API endpoint to apply a blur effect to an uploaded image.
-    :param file: The uploaded image file.
-    :return: StreamingResponse containing the blurred image.
-    """
+@app.get("/cut-object")
+async def cut_out_object_from_video(path):
     try:
-        # Process the image
-        blurred_image = await process_image_blur(file)
-
-        # Create a BytesIO object to send the image as a stream
-        image_io = io.BytesIO()
-        blurred_image.save(image_io, format="PNG")
-        image_io.seek(0)
-
-        # Return the blurred image as a stream in the response
-        return StreamingResponse(image_io, media_type="image/png")
+        result = await cut_out_object_from_video(path)
+        return JSONResponse(status_code=200, content=result)
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"message": "Failed to process image", "error": str(e)},
+            content= {"message": "Failed to cut out object from video.", "error": str(e)},
         )
+
 
 
 @app.post("/video-details")
 async def video_details(file: UploadFile = File(...)):
     try:
-        print(type(file))
         details = await get_video_details(file)
         return JSONResponse(status_code=200, content=details)
     except Exception as e:

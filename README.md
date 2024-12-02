@@ -31,8 +31,13 @@ The frontend lets you upload images and apply a blur effect to them.
    ```sh
    pip install -r requirements.txt
    ```
+4. **Download Sam2 checkpoint and config**
+   ```
+   Use Sam2 (not 2.1) from https://github.com/facebookresearch/sam2. 
+   Download the checkpoint and config and configure their Paths in video_editing.py
+   ```
 
-4. **Run the backend server:**
+5. **Run the backend server:**
    ```sh
    cd src
    python main.py
