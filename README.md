@@ -31,10 +31,17 @@ The frontend lets you upload images and apply a blur effect to them.
    ```sh
    pip install -r requirements.txt
    ```
-4. **Download Sam2 checkpoint and config**
+4. **Install Sam2**
+   > Install Sam2 and the correct pytorch-cuda version (if used with gpu)
+   ```sh
+   pip install 'git+https://github.com/facebookresearch/sam2.git'
    ```
-   Use Sam2 (not 2.1) from https://github.com/facebookresearch/sam2. 
-   Download the checkpoint and config and configure their Paths in video_editing.py
+   ```sh
+   conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
+   ```
+   > Download a checkpoint and config from 
+   ```
+   https://github.com/facebookresearch/sam2?tab=readme-ov-file#sam-21-checkpoints
    ```
 
 5. **Run the backend server:**

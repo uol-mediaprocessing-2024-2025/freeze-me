@@ -1,13 +1,20 @@
 import io
+import os
 from pathlib import Path
 
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import torch
+import torchvision
 from sam2.build_sam import build_sam2_video_predictor
 
-CHECKPOINT = Path.cwd().joinpath("checkpoints").joinpath("sam2_hiera_large.pt").as_posix()
-CONFIG = Path.cwd().joinpath("configs").joinpath("sam2_hiera_l.yaml").as_posix()
+CHECKPOINT = Path.cwd().joinpath("backend").joinpath("src").joinpath("checkpoints").joinpath(
+    "sam2.1_hiera_large.pt").as_posix()
+CONFIG = Path.cwd().joinpath("backend").joinpath("src").joinpath("configs").joinpath("sam2.1_hiera_l.yaml").as_posix()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+print("PyTorch version:", torch.__version__)
+print("Torchvision version:", torchvision.__version__)
+print("CUDA available:", torch.cuda.is_available())
 print(f"Using checkpoint: {CHECKPOINT}")
 print(f"Using config: {CONFIG}")
 print(f"Using device: {device}")
@@ -34,6 +41,4 @@ async def get_video_details(file: UploadFile):
         return ""
 
 async def cut_object_from_video(path):
-
     return path
-
