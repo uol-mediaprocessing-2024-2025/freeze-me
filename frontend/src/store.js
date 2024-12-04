@@ -6,4 +6,6 @@ export const store = reactive({
     videoUrls: [], // Stores the URLs of the fetched unblurred photos
     apiUrl: 'http://localhost:8000', // Base URL for API requests
     selectedVideo: null, // Stores the selected image
+    selectedVideoId: null,
+    segmentedFrame: null,
 });

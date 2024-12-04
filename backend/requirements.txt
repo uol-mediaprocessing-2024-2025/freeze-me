@@ -11,3 +11,4 @@ matplotlib
 numpy
 sam2
 supervision
+uuid

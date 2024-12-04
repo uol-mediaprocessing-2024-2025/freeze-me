@@ -2,6 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import GalleryView from '../views/GalleryView.vue'
 import MainView from '../views/MainView.vue'
+import SegmentationComponent from "@/components/SegmentationComponent.vue";
 
 // Create and configure the router
 const router = createRouter({
@@ -16,6 +17,11 @@ const router = createRouter({
       path: '/gallery', // Path for gallery view
       name: 'gallery',
       component: GalleryView
+    },
+    {
+      path: '/segmentation', // Path for gallery view
+      name: 'segmentation',
+      component: SegmentationComponent
     },
   ]
 })

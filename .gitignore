@@ -34,3 +34,5 @@ coverage
 *.mp4
 /backend/src/checkpoints
 /backend/src/configs
+/backend/notebook/.ipynb_checkpoints
+/backend/src/videos
