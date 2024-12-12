@@ -1,4 +1,3 @@
-import io
 import os
 from typing import Annotated
 
@@ -7,7 +6,6 @@ import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
-from starlette.responses import StreamingResponse
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
@@ -58,7 +56,7 @@ async def get_first_frame_of_video(video_id: str):
     try:
         first_frame = await get_first_frame(video_id)
         print("Got first frame")
-        return StreamingResponse(first_frame, media_type="image/jpeg")
+        return FileResponse(first_frame, media_type="image/jpeg")
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -69,10 +67,7 @@ async def get_first_frame_of_video(video_id: str):
 async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()], point_y: Annotated[float, Form()], point_type: Annotated[int, Form()]):
     try:
         masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type)
-        image_io = io.BytesIO()
-        masked_frame.save(image_io, format="PNG")
-        image_io.seek(0)
-        return StreamingResponse(image_io, media_type="image/png")
+        return FileResponse(masked_frame, media_type="image/png")
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -83,12 +78,12 @@ async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotate
 async def get_segmentation_result(video_id):
     try:
         masked_video = await get_masked_video(video_id)
-        test = io.FileIO(masked_video)
-        return StreamingResponse(test, media_type="video/mp4")
+        print("Got segmentation result in path: " + masked_video)
+        return FileResponse(masked_video, media_type="video/mp4")
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"message": "Failed to get first frame", "error": str(e)},
+            content={"message": "Failed to get segmented video", "error": str(e)},
         )
 
 if __name__ == "__main__":

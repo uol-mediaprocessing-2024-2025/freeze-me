@@ -5,8 +5,9 @@ from pathlib import Path
 
 import cv2
 import supervision as sv
-from PIL import Image
 from sam2.sam2_video_predictor import SAM2VideoPredictor
+
+from backend.src.path_manager import create_all_paths
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import torch
@@ -15,18 +16,27 @@ import uuid
 import numpy as np
 from sam2.build_sam import build_sam2_video_predictor
 
-CHECKPOINT = Path.cwd().joinpath("checkpoints").joinpath("sam2.1_hiera_large.pt").as_posix()
-CONFIG = Path.cwd().joinpath("configs").joinpath("sam2.1_hiera_l.yaml").as_posix()
+from path_manager import get_video_folder_path
+from path_manager import get_images_path
+from path_manager import get_upload_path
+from path_manager import get_checkpoint_path
+from path_manager import get_config_path
+from path_manager import get_temp_file_path
+from path_manager import get_frame_path
+from path_manager import get_result_path
+from path_manager import get_preview_mask_frames_folder_path
+from path_manager import get_preview_mask_frame_name
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("PyTorch version:", torch.__version__)
 print("Torchvision version:", torchvision.__version__)
 print("CUDA available:", torch.cuda.is_available())
-print(f"Using checkpoint: {CHECKPOINT}")
-print(f"Using config: {CONFIG}")
+print(f"Using checkpoint: {get_checkpoint_path()}")
+print(f"Using config: {get_config_path()}")
 print(f"Using device: {device}")
 
-predictor: SAM2VideoPredictor = build_sam2_video_predictor(CONFIG, CHECKPOINT, device=device)
+predictor: SAM2VideoPredictor = build_sam2_video_predictor(get_config_path(), get_checkpoint_path(), device=device)
 
 colors = ['#FF1493', '#00BFFF', '#FF6347', '#FFD700']
 mask_annotator = sv.MaskAnnotator(
@@ -36,8 +46,6 @@ mask_annotator = sv.MaskAnnotator(
 import ffmpeg
 from fastapi import UploadFile
 
-FOLDER_PATH = "videos"
-IMAGE_FOLDER_NAME = "images"
 inference_state: {}
 points: []
 labels: []
@@ -45,23 +53,19 @@ fps = ""
 
 
 async def save_video(file: UploadFile):
-    Path.cwd().joinpath(FOLDER_PATH).mkdir(parents=True, exist_ok=True)
-    video_id = uuid.uuid4().hex.__str__()
-    Path.cwd().joinpath(FOLDER_PATH).joinpath(video_id).mkdir(parents=True, exist_ok=True)
-    file_name = video_id + Path(file.filename).suffix
-    path = Path.cwd().joinpath(FOLDER_PATH).joinpath(video_id).joinpath(file_name)
+    video_id = uuid.uuid4().hex.__str__() + Path(file.filename).suffix
+    create_all_paths(video_id)
+    path = get_upload_path(video_id)
     video_data = io.BytesIO(await file.read())
     with open(path, "wb") as f:
         f.write(video_data.getbuffer())
-    return file_name
-
+    return video_id
 
 async def get_video_details(video_id):
     try:
-        parent_folder = Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem)
-        path = parent_folder.joinpath(video_id)
-        image_folder = parent_folder.joinpath(IMAGE_FOLDER_NAME)
-        image_folder.mkdir(parents=True, exist_ok=True)
+        global inference_state, points, labels
+        path = get_upload_path(video_id)
+        image_folder = get_images_path(video_id)
         details = ffmpeg.probe(path.__str__(), cmd="static_ffprobe")
         ffmpeg.input(path).output(image_folder.__str__() + "/%05d.jpeg", start_number=0,
                                   **{'q:v': '2'}).overwrite_output().run(quiet=True)
@@ -69,6 +73,9 @@ async def get_video_details(video_id):
         fps = (len([name for name in os.listdir(image_folder) if
                     os.path.isfile(os.path.join(image_folder, name))]) / float(details["format"]["duration"]))
         print("FPS: ", fps)
+        points = []
+        labels = []
+        inference_state = predictor.init_state(video_path=image_folder.__str__())
         return details
     except Exception as e:
         print(e)
@@ -79,17 +86,8 @@ async def get_video_details(video_id):
 
 
 async def get_first_frame(video_id):
-    global inference_state, points, labels
     try:
-        points = []
-        labels = []
-        image_path = Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem).joinpath(IMAGE_FOLDER_NAME)
-        print(image_path)
-        inference_state = predictor.init_state(video_path=image_path.__str__())
-        frame_path = image_path.joinpath("00000.jpeg")
-        file = open(frame_path, "rb")
-        frame_data = io.BytesIO(file.read())
-        return frame_data
+        return get_frame_path(video_id, 0)
     except Exception as e:
         print(e)
         print(e.__traceback__)
@@ -101,10 +99,8 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type):
         global inference_state, points, labels
         points.append([point_x, point_y])
         labels.append(point_type)
-        print(points)
-        print(labels)
-        output_path = Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem).joinpath("result")
-        with sv.ImageSink(target_dir_path=output_path.__str__(), overwrite=True) as sink:
+        output_path = get_preview_mask_frames_folder_path(video_id)
+        with sv.ImageSink(target_dir_path=output_path.__str__()) as sink:
             _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
                 inference_state=inference_state,
                 frame_idx=0,
@@ -120,12 +116,11 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type):
                 mask=masks,
                 tracker_id=np.array(out_obj_ids)
             )
-            frame_path = Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem).joinpath(
-                IMAGE_FOLDER_NAME).joinpath("00000.jpeg")
+            frame_path = get_frame_path(video_id, 0)
             frame = cv2.imread(frame_path.__str__())
             frame = mask_annotator.annotate(frame, detections)
-            sink.save_image(frame, "result.png")
-        return Image.open(output_path.joinpath("result.png").__str__())
+            sink.save_image(frame, get_preview_mask_frame_name(video_id, len(points)))
+        return get_preview_mask_frame_name(video_id, len(points))
     except Exception as e:
         print(e)
         print(e.__traceback__)
@@ -134,14 +129,16 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type):
 
 async def get_masked_video(video_id):
     try:
-        image_path = Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem).joinpath(IMAGE_FOLDER_NAME)
-        video_path = Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem).joinpath(video_id)
-        Path.cwd().joinpath(FOLDER_PATH).joinpath("results").mkdir(parents=True, exist_ok=True)
-        output_path = Path.cwd().joinpath(FOLDER_PATH).joinpath("results").joinpath(video_id)
+        output_path = get_result_path(video_id)
+        if output_path.exists():
+            return output_path.__str__()
+        image_path = get_images_path(video_id)
+        video_path = get_upload_path(video_id)
         video_info = sv.VideoInfo.from_video_path(video_path.__str__())
         frames_paths = sorted(sv.list_files_with_extensions(directory=image_path.__str__(), extensions=["jpeg"]))
         # run propagation throughout the video and collect the results in a dict
-        with sv.VideoSink(output_path.__str__(), video_info=video_info) as sink:
+        temp_file = get_temp_file_path(video_id)
+        with sv.VideoSink(temp_file.__str__(), video_info=video_info) as sink:
             for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state):
                 frame = cv2.imread(frames_paths[out_frame_idx])
                 masks = (out_mask_logits > 0.0).cpu().numpy()
@@ -154,8 +151,19 @@ async def get_masked_video(video_id):
                 )
                 frame = mask_annotator.annotate(frame, detections)
                 sink.write_frame(frame)
-        print(output_path)
-        return output_path
+        (ffmpeg
+         .input(temp_file.__str__())
+         .output(
+            output_path.__str__(),
+            vcodec='libx264',
+            movflags='faststart',
+            an=None
+         )
+         .overwrite_output().run(quiet=True)
+        )
+        temp_file.unlink(missing_ok=True)
+        print(output_path.__str__())
+        return output_path.__str__()
     except Exception as e:
         print(e)
         print(e.__traceback__)
