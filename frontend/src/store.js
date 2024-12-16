@@ -8,4 +8,5 @@ export const store = reactive({
     selectedVideo: null, // Stores the selected image
     selectedVideoId: null,
     segmentedFrame: null,
+    cutVideoFile: null
 });
