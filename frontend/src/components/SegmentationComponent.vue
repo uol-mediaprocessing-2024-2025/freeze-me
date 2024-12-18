@@ -95,6 +95,8 @@ const moveToSegmentationResult = async () => {
   isLoading.value = false
 }
 
+const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
+
 </script>
 
 <template>
@@ -128,6 +130,9 @@ const moveToSegmentationResult = async () => {
         <div v-if="segmentedVideo" class="frame-wrapper">
           <video v-if="segmentedVideo" :src="segmentedVideo" controls muted class="video">
           </video>
+          <v-btn class="continue-button" @click="moveToEffectSelection">
+            Continue
+          </v-btn>
         </div>
       </v-card>
     </v-container>
@@ -160,6 +165,18 @@ const moveToSegmentationResult = async () => {
   left: v-bind('dotX');
   top: v-bind('dotY');
 }
+
+.continue-button {
+  align-self: flex-end;
+  width: 33%;
+  min-width: 7em;
+}
+
+.video {
+  height: 100%;
+  width: auto;
+}
+
 </style>
 
 <style>
@@ -172,6 +189,7 @@ const moveToSegmentationResult = async () => {
   max-width: 1400px;
   width: 100%;
   height: 90%;
+  padding: 1em;
 }
 
 .segmentation-image {
@@ -180,7 +198,7 @@ const moveToSegmentationResult = async () => {
 }
 
 .frame-wrapper {
-  height: 100%;
+  height: 85%;
   width: 100%;
   display: flex;
   flex-direction: column;

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import router from "@/router/index.js";
 import { store } from "../store.js";
 import axios from "axios";
@@ -156,8 +156,8 @@ const cutVideo = async () => {
     </div>
 
     <!-- Video cutting options (Input fields for start and end time) -->
-    <div v-if="displayedVideo && !isLoading">
-      <div class="time-inputs">
+    <div v-if="displayedVideo && !isLoading" class="cut-container">
+      <div>
         <p>Start Time (in seconds):</p>
         <v-text-field
           v-model="startTime"
@@ -168,6 +168,8 @@ const cutVideo = async () => {
           label="Start Time"
           required
         />
+      </div>
+      <div>
         <p>End Time (in seconds):</p>
         <v-text-field
           v-model="endTime"
@@ -196,6 +198,18 @@ const cutVideo = async () => {
 </template>
 
 <style>
+.cut-container {
+  display: flex;
+  flex-direction: row;
+  margin-top: 20px;
+  align-items: center;
+  align-self: flex-start;
+}
+
+.cut-container > div {
+  margin-right: 2em;
+}
+
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -227,10 +241,6 @@ const cutVideo = async () => {
 
 .video-details {
   align-self: start;
-}
-
-.time-inputs {
-  margin-top: 20px;
 }
 
 .continue-button {

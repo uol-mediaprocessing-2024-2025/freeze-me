@@ -1,5 +1,6 @@
 import io
 import os
+import traceback
 from typing import Annotated
 
 
@@ -19,6 +20,8 @@ from video_editing import add_new_point_to_segmentation
 from video_editing import get_masked_video
 from video_editing import cut_video
 
+from image_editing import save_background
+from image_editing import generate_motion_blur_image
 
 app = FastAPI()
 static_ffmpeg.add_paths()
@@ -44,6 +47,31 @@ async def upload_video(file: UploadFile = File(...)):
             content={"message": "Failed to get upload video", "error": str(e)},
         )
 
+@app.post("/upload-background")
+async def upload_background(file: UploadFile = File(...), video_id: str = Form(...)):
+    try:
+        background_path = await save_background(file, video_id)
+        return FileResponse(background_path, media_type="image/jpeg")
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to upload background", "error": str(e)},
+        )
+
+@app.get("/get-motion-blur-preview")
+async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_transparency: float, frame_skip: int):
+    try:
+        print("Generating motion blur preview with ", blur_strength, blur_transparency, frame_skip)
+        image_path = await generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip)
+        return FileResponse(image_path, media_type="image/png")
+    except Exception as e:
+        print(e)
+        print(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to create motion blur preview", "error": str(e)},
+        )
+
 
 @app.get("/video-details")
 async def video_details(video_id: str):
@@ -61,9 +89,9 @@ async def video_details(video_id: str):
 @app.get("/get-first-frame")
 async def get_first_frame_of_video(video_id: str):
     try:
-        first_frame = await get_first_frame(video_id)
-        print("Got first frame")
-        return StreamingResponse(first_frame, media_type="image/jpeg")
+        first_frame_path = await get_first_frame(video_id)
+        print("Got first frame: " + first_frame_path.__str__())
+        return FileResponse(first_frame_path, media_type="image/jpeg")
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -74,10 +102,7 @@ async def get_first_frame_of_video(video_id: str):
 async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()], point_y: Annotated[float, Form()], point_type: Annotated[int, Form()]):
     try:
         masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type)
-        image_io = io.BytesIO()
-        masked_frame.save(image_io, format="PNG")
-        image_io.seek(0)
-        return StreamingResponse(image_io, media_type="image/png")
+        return FileResponse(masked_frame, media_type="image/png")
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -88,8 +113,7 @@ async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotate
 async def get_segmentation_result(video_id):
     try:
         masked_video = await get_masked_video(video_id)
-        test = io.FileIO(masked_video)
-        return StreamingResponse(test, media_type="video/mp4")
+        return FileResponse(masked_video, media_type="video/mp4")
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -110,11 +134,14 @@ async def cut_video_endpoint(video_id: Annotated[str, Form()], start_time: Annot
         print(video_id, start_time, end_time)
 
         cut_video_path = await cut_video(video_id, start_time, end_time)
-        print("Created cut_video at path:" + cut_video_path)
+        print("Created cut_video at path:" + cut_video_path.__str__())
         # Rückgabe der Erfolgsnachricht und des Pfades zum geschnittenen Video
         return FileResponse(cut_video_path, media_type="video/mp4")
 
     except Exception as e:
+        print(e)
+        print(e.__traceback__)
+        print(traceback.format_exc())
         # Detaillierte Fehlerbehandlung und -meldung
         return JSONResponse(
             status_code=500,
