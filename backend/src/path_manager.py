@@ -13,20 +13,42 @@ MOTION_BLUR_FOLDER = "blurred-frames"
 TEMP_FILE_NAME = "temp.mp4"
 CHECKPOINT_PATH = "checkpoints"
 CONFIG_PATH = "configs"
-WORK_DIRECTORY = Path.cwd()
-
 
 def get_config_path():
-    path = os.environ.get("CONFIG")
+    path = os.environ.get("SAM_VERSION").lower()
     if path is None:
-        raise Exception("CONFIG environment variable not set")
-    return Path(path).as_posix()
+        print("SAM_VERSION environment variable is not set")
+        print("Possible values are: large, b_plus, small, tiny")
+        print("Defaulting to small")
+
+    match path:
+        case "large":
+            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_l.yaml").absolute()
+        case "b_plus":
+            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_b+.yaml").absolute()
+        case "tiny":
+            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_t.yaml").absolute()
+        case _:
+            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_s.yaml").absolute()
+    return path.as_posix()
 
 def get_checkpoint_path():
-    path = os.environ.get("CHECKPOINT")
+    path = os.environ.get("SAM_VERSION").lower()
     if path is None:
-        raise Exception("CHECKPOINT environment variable not set")
-    return Path(path).as_posix()
+        print("SAM_VERSION environment variable is not set")
+        print("Possible values are: large, b_plus, small, tiny")
+        print("Defaulting to small")
+
+    match path:
+        case "large":
+            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_large.pt").absolute()
+        case "b_plus":
+            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_base_plus.pt").absolute()
+        case "tiny":
+            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_tiny.pt").absolute()
+        case _:
+            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_small.pt").absolute()
+    return path.as_posix()
 
 def get_video_folder_path(video_id):
     return Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem)
