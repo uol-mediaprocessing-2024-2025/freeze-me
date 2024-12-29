@@ -15,7 +15,7 @@ CHECKPOINT_PATH = "checkpoints"
 CONFIG_PATH = "configs"
 
 def get_config_path():
-    path = os.environ.get("SAM_VERSION").lower()
+    path = os.environ.get("SAM_VERSION").__str__().lower()
     if path is None:
         print("SAM_VERSION environment variable is not set")
         print("Possible values are: large, b_plus, small, tiny")
@@ -33,7 +33,7 @@ def get_config_path():
     return path.as_posix()
 
 def get_checkpoint_path():
-    path = os.environ.get("SAM_VERSION").lower()
+    path = os.environ.get("SAM_VERSION").__str__().lower()
     if path is None:
         print("SAM_VERSION environment variable is not set")
         print("Possible values are: large, b_plus, small, tiny")

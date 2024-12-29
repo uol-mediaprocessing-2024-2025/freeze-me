@@ -7,7 +7,7 @@ import cv2
 import supervision as sv
 from sam2.sam2_video_predictor import SAM2VideoPredictor
 from torch.cuda.amp import autocast
-from backend.src.path_manager import create_all_paths
+from path_manager import create_all_paths
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import torch
