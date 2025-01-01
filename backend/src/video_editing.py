@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 import supervision as sv
 from sam2.sam2_video_predictor import SAM2VideoPredictor
-from torch.cuda.amp import autocast
+
 from path_manager import create_all_paths
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
@@ -60,7 +60,7 @@ import shutil
 inference_state: {}
 points: []
 labels: []
-fps = ""
+fps = 0
 
 
 async def save_video(file: UploadFile):
@@ -72,14 +72,20 @@ async def save_video(file: UploadFile):
         f.write(video_data.getbuffer())
     return video_id
 
+
 async def get_video_details(video_id):
     try:
         path = get_upload_path(video_id)
-        image_folder = get_images_path(video_id)
         details = ffmpeg.probe(path.__str__(), cmd="static_ffprobe")
         global fps
-        fps = (len([name for name in os.listdir(image_folder) if
-                    os.path.isfile(os.path.join(image_folder, name))]) / float(details["format"]["duration"]))
+        video_stream = None
+        for stream in details["streams"]:
+            if stream["codec_type"] == "video":
+                video_stream = stream
+                break
+        fps_string = video_stream["r_frame_rate"]
+        slash = fps_string.find("/")
+        fps = round(float(fps_string[0:slash]) / float(fps_string[slash + 1:]), 2)
         print("FPS: ", fps)
         return details
     except Exception as e:
@@ -165,13 +171,15 @@ async def get_masked_video(video_id):
                 # Create foreground cut frames
                 transparent_foreground = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
                 transparent_foreground[:, :, 3] = masks.astype(np.uint8) * 255
-                cut_frame_path = get_foreground_temp_image_folder(video_id).joinpath(Path(os.path.basename(frames_paths[out_frame_idx])).stem + ".png")
+                cut_frame_path = get_foreground_temp_image_folder(video_id).joinpath(
+                    Path(os.path.basename(frames_paths[out_frame_idx])).stem + ".png")
                 cv2.imwrite(cut_frame_path, transparent_foreground)
 
                 # Create background cut frames
                 transparent_background = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
                 transparent_background[:, :, 3] = ((masks.astype(np.uint8) + 1) % 2) * 255
-                cut_frame_path = get_background_temp_image_folder(video_id).joinpath(Path(os.path.basename(frames_paths[out_frame_idx])).stem + ".png")
+                cut_frame_path = get_background_temp_image_folder(video_id).joinpath(
+                    Path(os.path.basename(frames_paths[out_frame_idx])).stem + ".png")
                 cv2.imwrite(cut_frame_path, transparent_background)
 
                 # Create masked frames
@@ -184,9 +192,9 @@ async def get_masked_video(video_id):
             vcodec='libx264',
             movflags='faststart',
             an=None
-         )
-         .overwrite_output().run(quiet=True)
         )
+         .overwrite_output().run(quiet=True)
+         )
         temp_file.unlink(missing_ok=True)
         print(output_path.__str__())
         return output_path.__str__()
@@ -218,32 +226,17 @@ async def cut_video(video_id: str, start_time: float, end_time: float):
         if not original_video_path.exists():
             raise FileNotFoundError(f"Originalvideo {original_video_path.__str__()} wurde nicht gefunden.")
 
-        # Video laden
-        cap = cv2.VideoCapture(str(original_video_path))
-        if not cap.isOpened():
-            raise Exception(f"Das Video {original_video_path.__str__()} konnte nicht geladen werden.")
-
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        global fps
         start_frame = int(start_time * fps)
         end_frame = int(end_time * fps)
+        print(f"Start Frame: {start_frame}")
+        print(f"End Frame: {end_frame}")
+        print(f"FPS: {fps}")
 
-        # Video-Writer konfigurieren
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        out = cv2.VideoWriter(str(temp_video_path), fourcc, fps, (width, height))
-
-        # Frames lesen und schreiben
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-        for frame_idx in range(start_frame, end_frame):
-            ret, frame = cap.read()
-            if not ret:
-                print(f"Fehler beim Lesen von Frame {frame_idx}. Abbrechen.")
-                break
-            out.write(frame)
-
-        cap.release()
-        out.release()
+        input_file = ffmpeg.input(original_video_path.__str__())
+        ffmpeg.output(input_file.trim(start_frame=start_frame, end_frame=end_frame).setpts('PTS-STARTPTS'),
+                      temp_video_path.__str__(), vcodec='libx264', movflags='faststart',
+                      an=None).overwrite_output().run(quiet=True)
 
         # Überprüfen, ob die temporäre Datei erfolgreich erstellt wurde
         if temp_video_path.exists():

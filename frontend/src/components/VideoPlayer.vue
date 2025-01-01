@@ -8,12 +8,14 @@ const isLoading = ref(false);  // Boolean to show a loading spinner while the im
 const fileBlob = ref(null);
 const videoId = ref(null);
 const displayedVideo = ref(null);
+
 const framerate = ref(0);
 const height = ref(0);
 const width = ref(0);
 const codec = ref(0);
 const bitrate = ref(0);
 const duration = ref(0);
+
 const startTime = ref(0);  // Start time for cutting video
 const endTime = ref(0);    // End time for cutting video
 
@@ -59,6 +61,18 @@ const handleVideoUpload = async (event) => {
         console.log(videoId.value);
         store.selectedVideoId = videoId.value;
 
+        await updateVideoDetails()
+        endTime.value = Math.round(duration.value * 100) / 100;
+
+    } catch (error) {
+        console.error('Failed to get details:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const updateVideoDetails = async () => {
+    try {
         const idFormData = new FormData();
         idFormData.append('video_id', videoId.value);
         // Make a GET request to fetch the details of the video
@@ -77,7 +91,7 @@ const handleVideoUpload = async (event) => {
             }
         }
         if (videoStream) {
-            duration.value = videoStream.duration;
+            duration.value = Math.round(videoStream.duration * 100) / 100;
             const fpsString = videoStream.r_frame_rate;
             const slashIndex = fpsString.lastIndexOf("/");
             framerate.value = Math.round((Number(fpsString.substring(0, slashIndex)) / Number(fpsString.substring(slashIndex + 1))) * 100) / 100;
@@ -86,13 +100,10 @@ const handleVideoUpload = async (event) => {
             bitrate.value = videoStream.bit_rate;
             codec.value = videoStream.codec_name;
         }
-
     } catch (error) {
         console.error('Failed to get details:', error);
-    } finally {
-        isLoading.value = false;
     }
-};
+}
 
 // Trigger the file input dialog when the image field is clicked
 const openFileDialog = () => document.querySelector('input[type="file"]').click();
@@ -118,6 +129,11 @@ const cutVideo = async () => {
         // Save the cut video path in store or show it to the user
         displayedVideo.value = URL.createObjectURL(response.data)
         store.selectedVideo = displayedVideo.value
+
+        await updateVideoDetails()
+        endTime.value = duration.value;
+        startTime.value = 0;
+
     } catch (error) {
         console.error("Error cutting the video:", error);
     } finally {
