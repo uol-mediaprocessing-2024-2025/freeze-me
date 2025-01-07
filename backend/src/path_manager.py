@@ -13,6 +13,7 @@ MOTION_BLUR_FOLDER = "blurred-frames"
 TEMP_FILE_NAME = "temp.mp4"
 CHECKPOINT_PATH = "checkpoints"
 CONFIG_PATH = "configs"
+WORKFLOW_DATA_FILE="workflow.json"
 
 def get_config_path():
     path = os.environ.get("SAM_VERSION").__str__().lower()
@@ -50,8 +51,14 @@ def get_checkpoint_path():
             path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_small.pt").absolute()
     return path.as_posix()
 
+def get_main_folder():
+    return Path.cwd().joinpath(FOLDER_PATH)
+
 def get_video_folder_path(video_id):
-    return Path.cwd().joinpath(FOLDER_PATH).joinpath(Path(video_id).stem)
+    return get_main_folder().joinpath(Path(video_id).stem)
+
+def get_workflow_data_path(video_id):
+    return get_video_folder_path(video_id).joinpath(WORKFLOW_DATA_FILE)
 
 def get_upload_path(video_id):
     return get_video_folder_path(video_id).joinpath(video_id)
