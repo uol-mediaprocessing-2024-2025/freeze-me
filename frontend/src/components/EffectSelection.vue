@@ -1,29 +1,26 @@
 <script setup>
 import {onMounted, ref} from "vue";
 import {store} from "@/store.js";
-import router from "@/router/index.js";
 import axios from "axios";
 
 const isLoading = ref(false);
 const videoId = ref(null);
 const uploadedBackground = ref(null);
-const selectedEffect = ref("");
-const motionBlurPreview = ref("")
-const blurStrength = ref(1)
-const blurTransparency = ref(1)
-const frameSkip = ref(0)
+const selectedEffect = ref("blur"); // Standardmäßig Blur-Effekt auswählen
+const motionBlurPreview = ref("");
+const blurStrength = ref(1);
+const blurTransparency = ref(1);
+const frameSkip = ref(1); // Frame-Abstand für Multiple Instances
+const instanceCount = ref(5); // Anzahl der Instanzen für Multiple Instances
+const multipleInstancePreview = ref(""); // Vorschau für Multiple Instances
 
 onMounted(async () => {
   isLoading.value = true;
   videoId.value = store.selectedVideoId;
-  if (videoId.value == null) {
-    //router.push({path: '/'})
-    return;
-  }
   isLoading.value = false;
-})
+});
 
-const  handleBackgroundUpload = async (event) => {
+const handleBackgroundUpload = async (event) => {
   if (isLoading.value) {
     return;
   }
@@ -36,19 +33,18 @@ const  handleBackgroundUpload = async (event) => {
       backgroundFormData.append('video_id', videoId.value);
       console.log("Uploading background for: " + videoId.value);
 
-      // Make a POST request to the backend API to upload the video
       const background = await axios.post(`${store.apiUrl}/upload-background`, backgroundFormData, {
           responseType: 'blob',
       });
-      uploadedBackground.value = URL.createObjectURL(background.data); // Store the uploaded file as a Blob
+      uploadedBackground.value = URL.createObjectURL(background.data);
       store.selectedBackground = background.data;
-      console.log("Uploaded Background!")
+      console.log("Uploaded Background!");
     } catch (e) {
       console.error(e);
     }
   }
   isLoading.value = false;
-}
+};
 
 const openFileDialog = () => document.querySelector('input[type="file"]').click();
 
@@ -59,12 +55,10 @@ const generateImage = async () => {
   isLoading.value = true;
 
   try {
-    console.log("Uploading background for: " + videoId.value);
-
-    const videoIdParam = "video_id=" + videoId.value
-    const strengthParam = "&blur_strength=" + blurStrength.value
-    const transparencyParam = "&blur_transparency=" + blurTransparency.value
-    const skipParam = "&frame_skip=" + frameSkip.value
+    const videoIdParam = "video_id=" + videoId.value;
+    const strengthParam = "&blur_strength=" + blurStrength.value;
+    const transparencyParam = "&blur_transparency=" + blurTransparency.value;
+    const skipParam = "&frame_skip=" + frameSkip.value;
     const preview_image = await axios.get(`${store.apiUrl}/get-motion-blur-preview?` + videoIdParam + strengthParam + transparencyParam + skipParam, {
         responseType: 'blob',
     });
@@ -72,20 +66,46 @@ const generateImage = async () => {
     motionBlurPreview.value = URL.createObjectURL(preview_image.data);
     console.log(motionBlurPreview.value);
   } catch (e) {
-    console.error(e)
+    console.error(e);
   }
 
   isLoading.value = false;
-}
+};
+
+const applyMultipleInstancesEffect = async () => {
+  if (!videoId.value) {
+    alert("Bitte wählen Sie ein Video aus.");
+    return;
+  }
+  isLoading.value = true;
+  try {
+    const response = await axios.get(
+      `${store.apiUrl}/effect/multiple-instances/`,
+      {
+        params: {
+          video_id: videoId.value,
+          instance_count: instanceCount.value,
+          frame_skip: frameSkip.value, // Frame-Abstand übergeben
+        },
+      }
+    );
+    multipleInstancePreview.value = response.data.output_path;
+  } catch (error) {
+    console.error("Fehler beim Anwenden des Multiple Instances Effekts:", error);
+    alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+
 
 </script>
 
 <template>
   <main>
     <v-container class="d-flex flex-column align-center justify-center segmentation-container">
-      <!-- A card to contain the form and images -->
       <v-card elevation="2" class="pa-4 segmentation-card-container">
-        <!-- Card title -->
         <v-card-title class="justify-center">
           <h2>Effects</h2>
         </v-card-title>
@@ -116,7 +136,7 @@ const generateImage = async () => {
                   <div class="text-caption">Transparency of Blur-Effect ({{blurTransparency}})</div>
                   <v-slider v-model="blurTransparency" show-ticks="always" tick-size="5" thumb-label :max="1" :min="0" :step="0.1"></v-slider>
                   <div class="text-caption">Frame Skip [EXPERIMENTAL] ({{frameSkip}})</div>
-                  <v-slider v-model="frameSkip" show-ticks="always" tick-size="5" thumb-label :max="5" :min="0" :step="1"></v-slider>
+                  <v-slider v-model="frameSkip" show-ticks="always" tick-size="5" thumb-label :max="5" :min="1" :step="1"></v-slider>
                 </div>
               </div>
               <v-card class="image-preview-container">
@@ -132,7 +152,48 @@ const generateImage = async () => {
 
           <v-tabs-window-item :key="2" :value="2">
             <v-container fluid>
-              <h3>Soon...</h3>
+              <div class="effect-container">
+                <div class="user-input">
+                  <h3 class="pb-2">Settings</h3>
+                  <div class="text-caption">Number of Instances ({{instanceCount}})</div>
+                  <v-slider
+                    v-model="instanceCount"
+                    show-ticks="always"
+                    tick-size="5"
+                    thumb-label
+                    :max="100"
+                    :min="1"
+                    :step="1"
+                  ></v-slider>
+                  <div class="text-caption">Frame Skip ({{frameSkip}})</div>
+                  <v-slider
+                    v-model="frameSkip"
+                    show-ticks="always"
+                    tick-size="5"
+                    thumb-label
+                    :max="100"
+                    :min="1"
+                    :step="1"
+                  ></v-slider>
+                </div>
+                <v-card class="image-preview-container">
+                  <div>
+                    <h3 class="pb-2">Image Preview</h3>
+                    <img
+                      v-if="multipleInstancePreview"
+                      :src="multipleInstancePreview"
+                      alt="preview of generated image"
+                      class="image-preview"
+                    />
+                    <p class="pt-5" v-else>
+                      Press "Generate Image" to see a preview of the image
+                    </p>
+                  </div>
+                  <v-btn @click="applyMultipleInstancesEffect" :disabled="isLoading"
+                    >Generate Image</v-btn
+                  >
+                </v-card>
+              </div>
             </v-container>
           </v-tabs-window-item>
         </v-tabs-window>
@@ -140,6 +201,7 @@ const generateImage = async () => {
     </v-container>
   </main>
 </template>
+
 
 <style scoped>
 .tab {
@@ -193,3 +255,4 @@ const generateImage = async () => {
   width: auto;
 }
 </style>
+

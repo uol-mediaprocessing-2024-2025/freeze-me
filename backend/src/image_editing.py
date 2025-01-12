@@ -10,7 +10,7 @@ import supervision as sv
 from PIL import Image
 from fastapi import UploadFile
 
-from path_manager import get_images_path
+from path_manager import get_images_path, get_background_temp_image_folder
 from path_manager import get_foreground_temp_image_folder
 from path_manager import get_background_image
 from path_manager import get_motion_blur_folder
@@ -183,3 +183,72 @@ def create_blurred_frame_experimental(frame, magnitude, angle, min_x, min_y, max
                 blurred_frame[y][x] = process_pixel(x, y)
 
     return blurred_frame
+
+
+def create_multiple_instance_effect(video_id, output_path, instance_count, frame_skip):
+    """
+    Erstellt ein Bild mit mehreren Instanzen des Vordergrundobjekts aus einem Video.
+
+    :param video_id: ID des Videos
+    :param output_path: Pfad zur Ausgabe der resultierenden Bilddatei
+    :param instance_count: Anzahl der Instanzen des Vordergrundobjekts
+    :param frame_skip: Abstand zwischen den Frames, die verwendet werden sollen
+    """
+    try:
+        # Pfade für Frames abrufen
+        foreground_folder = get_foreground_temp_image_folder(video_id)
+        background_folder = get_background_temp_image_folder(video_id)
+
+        # Letzten Frame als Hintergrund verwenden
+        background_frame_path = sorted(Path(background_folder).glob("*.png"))[-1]
+        background_frame = cv2.imread(str(background_frame_path), cv2.IMREAD_UNCHANGED)
+
+        # Vorherige Vordergrund-Frames laden
+        foreground_frames = sorted(Path(foreground_folder).glob("*.png"))
+
+        # Begrenzung der Instanzen, um Indexfehler zu vermeiden
+        if len(foreground_frames) < instance_count * frame_skip:
+            instance_count = len(foreground_frames) // frame_skip
+
+        # Überlagerung der Vordergrundobjekte mit definiertem Abstand
+        instance_count = instance_count - 1
+        for i in range(instance_count):
+            frame_index = -(instance_count * frame_skip) + (i * frame_skip)
+            foreground_frame = cv2.imread(str(foreground_frames[frame_index]), cv2.IMREAD_UNCHANGED)
+
+            # Extrahieren der Maske aus dem Alpha-Kanal
+            alpha_channel = foreground_frame[:, :, 3]
+            mask = alpha_channel > 0
+
+            # Einfügen des Vordergrunds in den Hintergrund
+            for c in range(0, 3):  # Nur RGB-Kanäle
+                background_frame[:, :, c][mask] = foreground_frame[:, :, c][mask]
+
+        # Den letzten Vordergrund-Frame explizit hinzufügen
+        last_foreground_frame_path = str(foreground_frames[-1])
+        last_foreground_frame = cv2.imread(last_foreground_frame_path, cv2.IMREAD_UNCHANGED)
+
+        alpha_channel = last_foreground_frame[:, :, 3]
+        mask = alpha_channel > 0
+
+        for c in range(0, 3):
+            background_frame[:, :, c][mask] = last_foreground_frame[:, :, c][mask]
+
+        # Resultierendes Bild speichern
+        cv2.imwrite(output_path, background_frame)
+        print(f"Multiple instance effect created and saved to {output_path}")
+    except Exception as e:
+        print(f"Error creating multiple instance effect: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+
