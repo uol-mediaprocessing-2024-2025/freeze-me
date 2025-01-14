@@ -1,9 +1,9 @@
 {
     "name": "frontend",
     "version": "1.0.0",
-    "description": "Simple web app demo.",
+    "description": "Freeze me - UI.",
     "main": "vite.config.js",
-    "author": "Filip Wojciak",
+    "author": "Filip Wojciak, Sven Sauer, Jens Lippert",
     "license": "ISC",
     "private": true,
     "type": "module",

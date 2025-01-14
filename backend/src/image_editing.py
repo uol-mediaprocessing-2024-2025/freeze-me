@@ -34,7 +34,7 @@ async def save_background(file: UploadFile, video_id):
     with open(path, "wb") as f:
         f.write(image_data.getbuffer())
 
-    # Convert to jpeg
+    # Convert to png
     final_image_path = get_background_image(video_id, "background.png")
     image = cv2.imread(path)
     cv2.imwrite(final_image_path, image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])

@@ -112,6 +112,14 @@ async def get_first_frame(video_id):
         print(e.__traceback__)
         print(traceback.format_exc())
 
+async def get_frame(video_id, frame_id):
+    try:
+        return get_frame_path(video_id, frame_id)
+    except Exception as e:
+        print(e)
+        print(e.__traceback__)
+        print(traceback.format_exc())
+
 
 async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type):
     try:

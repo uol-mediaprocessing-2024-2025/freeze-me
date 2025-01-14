@@ -1,30 +1,25 @@
 <template>
     <!-- Main application container -->
     <v-app id="app">
-        <!-- Sidebar navigation using Vuetify's navigation drawer -->
-        <v-navigation-drawer app permanent style="background-color: rgb(30, 50, 92);" class="px-2 text-white">
-            <!-- Title and subtitle for the app -->
-            <v-list-item title="Simple Web-App" subtitle="Demo"></v-list-item>
-            <v-divider></v-divider>
+      <div style="background-color: rgb(30, 50, 92); height: 7vh" class="px-2 text-white d-flex align-center header">
+        <div class="pl-4 pr-12 title" >
+          <v-app-bar-title>Freeze Me</v-app-bar-title>
+        </div>
+        <!-- Link to the main view -->
+        <v-btn class="d-flex mr-4 no-focus-highlight" variant="outlined" prepend-icon="mdi-home" link to="/">
+            Create New Project
+        </v-btn>
 
-            <!-- Navigation list for routing -->
-            <v-list c dense>
-                <!-- Link to the main view -->
-                <v-list-item class="d-flex" prepend-icon="mdi-home" link to="/">
-                    <v-list-item-title>Main</v-list-item-title>
-                </v-list-item>
+        <!-- Link to the gallery view -->
+        <v-btn class="d-flex no-focus-highlight" variant="outlined" prepend-icon="mdi-image" link to="/gallery">
+            Projects
+        </v-btn>
+      </div>
 
-                <!-- Link to the gallery view -->
-                <v-list-item class="d-flex" prepend-icon="mdi-image" link to="/gallery">
-                    <v-list-item-title>Gallery</v-list-item-title>
-                </v-list-item>
-            </v-list>
-        </v-navigation-drawer>
-
-        <!-- Main content area for rendering views -->
-        <v-main style="height: 100vh; overflow-x: hidden;">
-            <RouterView /> <!-- Dynamically renders the component based on the route -->
-        </v-main>
+      <!-- Main content area for rendering views -->
+      <v-main style="height: 93vh; overflow-x: hidden;">
+          <RouterView /> <!-- Dynamically renders the component based on the route -->
+      </v-main>
     </v-app>
 </template>
 
@@ -54,6 +49,11 @@ nav a {
 /* Styling for active navigation links */
 .v-list-item--active .v-list-item-title {
     font-weight: bold;
+}
+
+.v-btn {
+  background: transparent;
+  --v-activated-opacity: 0;
 }
 
 /* Rounded styling for the navigation items */

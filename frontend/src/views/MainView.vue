@@ -4,6 +4,16 @@ import MainComponent from '../components/MainComponent.vue'
 
 <template>
   <main>
-    <MainComponent />
+    <MainComponent class="main-view" />
   </main>
 </template>
+
+<style>
+.main-view {
+  height: 78vh;
+}
+
+.progress-bar-container {
+  height: 15vh;
+}
+</style>

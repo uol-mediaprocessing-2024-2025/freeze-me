@@ -9,5 +9,12 @@ export const store = reactive({
     selectedVideoId: null,
     segmentedFrame: null,
     cutVideoFile: null,
-    selectedBackground: null
+    selectedBackground: null,
+    steps: {
+        videoEditing: false,
+        segmentation: false,
+        background: false,
+        mainEffect: false,
+        afterEffect: false
+    }
 });

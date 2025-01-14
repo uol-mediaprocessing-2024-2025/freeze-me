@@ -7,7 +7,10 @@ from path_manager import get_main_folder
 from path_manager import get_workflow_data_path
 
 # saved data keys
-STEP = "step"
+CURRENT_STEP = "current_step"
+ALL_STEPS = "all_steps"
+AVAILABLE_STEPS = "available_steps"
+ID = "id"
 
 # steps after uploading video
 class Step(Enum):
@@ -19,7 +22,9 @@ class Step(Enum):
 
 
 def create_project(video_id):
-    workflow_data = {STEP: Step.VIDEO_EDITING.value}
+    workflow_data = {CURRENT_STEP: Step.VIDEO_EDITING.value, AVAILABLE_STEPS: [Step.VIDEO_EDITING.value], ID: video_id}
+    print(video_id)
+    print(get_workflow_data_path(video_id))
     save_data(get_workflow_data_path(video_id), workflow_data)
 
 
@@ -31,13 +36,19 @@ def get_all_projects():
 
 
 def get_current_step(video_id):
-    return load_data(get_workflow_data_path(video_id))[STEP]
+    return load_data(get_workflow_data_path(video_id))[CURRENT_STEP]
 
 
-def set_current_step(video_id, step):
+def set_current_step(video_id, step: Step):
     workflow_data = load_data(get_workflow_data_path(video_id))
-    workflow_data[STEP] = step
+    workflow_data[CURRENT_STEP] = step.value
+    if step.value not in workflow_data[AVAILABLE_STEPS]:
+        workflow_data[AVAILABLE_STEPS].append(step.value)
     save_data(get_workflow_data_path(video_id), workflow_data)
+
+
+def get_step_data(video_id):
+    return load_data(get_workflow_data_path(video_id))
 
 
 def load_data(path):

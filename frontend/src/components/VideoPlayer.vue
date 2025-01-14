@@ -73,8 +73,6 @@ const handleVideoUpload = async (event) => {
 
 const updateVideoDetails = async () => {
     try {
-        const idFormData = new FormData();
-        idFormData.append('video_id', videoId.value);
         // Make a GET request to fetch the details of the video
         const details_response = await axios.get(`${store.apiUrl}/video-details?video_id=` + videoId.value);
 

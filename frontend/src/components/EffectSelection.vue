@@ -17,8 +17,11 @@ onMounted(async () => {
   isLoading.value = true;
   videoId.value = store.selectedVideoId;
   if (videoId.value == null) {
-    //router.push({path: '/'})
+    router.push({path: '/'})
     return;
+  }
+  if (store.selectedBackground != null) {
+    uploadedBackground.value = store.selectedBackground
   }
   isLoading.value = false;
 })
@@ -110,7 +113,7 @@ const generateImage = async () => {
                         prepend-icon="mdi-upload"></v-file-input>
                 </div>
                 <div class="settings-container">
-                  <h3 class="pb-2">Setting</h3>
+                  <h3 class="pb-2">Settings</h3>
                   <div class="text-caption">Strength of Blur-Effect ({{blurStrength}})</div>
                   <v-slider v-model="blurStrength" show-ticks="always" tick-size="5" thumb-label :max="5" :min="1" :step="1"></v-slider>
                   <div class="text-caption">Transparency of Blur-Effect ({{blurTransparency}})</div>
