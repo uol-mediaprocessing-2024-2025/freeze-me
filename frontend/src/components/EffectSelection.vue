@@ -181,7 +181,7 @@ const applyMultipleInstancesEffect = async () => {
                     show-ticks="always"
                     tick-size="5"
                     thumb-label
-                    :max="100"
+                    :max="200"
                     :min="1"
                     :step="1"
                   ></v-slider>

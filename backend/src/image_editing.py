@@ -193,21 +193,21 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
     try:
         # Pfade für Frames abrufen
         foreground_folder = get_foreground_temp_image_folder(video_id)
-        background_folder = get_background_temp_image_folder(video_id)
+        background_folder = get_images_path(video_id)
 
         # Letzten Frame als Hintergrund verwenden
-        background_frame_path = sorted(Path(background_folder).glob("*.png"))[-1]
+        background_frame_path = sorted(Path(background_folder).glob("*.jpeg"))[-1]
         background_frame = cv2.imread(str(background_frame_path), cv2.IMREAD_UNCHANGED)
 
         # Vorherige Vordergrund-Frames laden
         foreground_frames = sorted(Path(foreground_folder).glob("*.png"))
 
         # Begrenzung der Instanzen, um Indexfehler zu vermeiden
+        instance_count = instance_count - 1
         if len(foreground_frames) < instance_count * frame_skip:
             instance_count = len(foreground_frames) // frame_skip
 
         # Überlagerung der Vordergrundobjekte mit definiertem Abstand
-        instance_count = instance_count - 1
         for i in range(instance_count):
             frame_index = -(instance_count * frame_skip) + (i * frame_skip)
             foreground_frame = cv2.imread(str(foreground_frames[frame_index]), cv2.IMREAD_UNCHANGED)
