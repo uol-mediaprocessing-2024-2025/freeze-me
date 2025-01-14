@@ -182,7 +182,7 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
 <style>
 
 .segmentation-container {
-  height: 100vh;
+  height: 93vh;
 }
 
 .segmentation-card-container {

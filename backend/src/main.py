@@ -218,7 +218,7 @@ async def multiple_instance_effect(video_id: str, instance_count: int, frame_ski
         if not output_path.exists():
             raise FileNotFoundError(f"Das Bild wurde nicht unter {output_path} gespeichert.")
 
-        return {"status": "success", "output_path": str(output_path)}
+        return FileResponse(output_path, media_type="image/png")
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

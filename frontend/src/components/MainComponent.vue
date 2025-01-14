@@ -22,7 +22,7 @@ import VideoPlayer from "@/components/VideoPlayer.vue";
 
 <style scoped>
 .main-container {
-  height: 78vh;
+  height: 93vh;
 }
 
 .card-container {

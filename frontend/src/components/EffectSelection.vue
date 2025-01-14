@@ -95,9 +95,11 @@ const applyMultipleInstancesEffect = async () => {
           instance_count: instanceCount.value,
           frame_skip: frameSkip.value, // Frame-Abstand übergeben
         },
+        responseType: "blob",
       }
     );
-    multipleInstancePreview.value = response.data.output_path;
+    console.log(response)
+    multipleInstancePreview.value = URL.createObjectURL(response.data);
   } catch (error) {
     console.error("Fehler beim Anwenden des Multiple Instances Effekts:", error);
     alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
@@ -144,7 +146,7 @@ const applyMultipleInstancesEffect = async () => {
                   <div class="text-caption">Transparency of Blur-Effect ({{blurTransparency}})</div>
                   <v-slider v-model="blurTransparency" show-ticks="always" tick-size="5" thumb-label :max="1" :min="0" :step="0.1"></v-slider>
                   <div class="text-caption">Frame Skip [EXPERIMENTAL] ({{frameSkip}})</div>
-                  <v-slider v-model="frameSkip" show-ticks="always" tick-size="5" thumb-label :max="5" :min="0" :step="1"></v-slider>
+                  <v-slider v-model="frameSkip" show-ticks="always" tick-size="5" thumb-label :max="20" :min="0" :step="1"></v-slider>
                 </div>
               </div>
               <v-card class="image-preview-container">
@@ -197,9 +199,7 @@ const applyMultipleInstancesEffect = async () => {
                       Press "Generate Image" to see a preview of the image
                     </p>
                   </div>
-                  <v-btn @click="applyMultipleInstancesEffect" :disabled="isLoading"
-                    >Generate Image</v-btn
-                  >
+                  <v-btn @click="applyMultipleInstancesEffect" :disabled="isLoading">Generate Image</v-btn>
                 </v-card>
               </div>
             </v-container>
@@ -260,7 +260,9 @@ const applyMultipleInstancesEffect = async () => {
 
 .image-preview {
   height: 80%;
-  width: auto;
+  width: fit-content;
+  max-width: 100%;
+  max-height: 80%;
 }
 </style>
 

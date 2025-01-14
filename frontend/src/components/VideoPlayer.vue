@@ -160,45 +160,46 @@ const cutVideo = async () => {
     <div v-if="isLoading" class="loading-overlay">
       <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
     </div>
-
-    <div class="video-details">
-      <p v-if="duration">Duration: {{ duration }}s</p>
-      <p v-if="framerate">Framerate: {{ framerate }}fps</p>
-      <p v-if="height && width">Dimensions: {{ width }} x {{ height }}</p>
-      <p v-if="codec">Codec: {{ String(codec).charAt(0).toUpperCase() + String(codec).slice(1) }}</p>
-      <p v-if="bitrate">Bitrate: {{ Math.round(bitrate / 1000) }} kBit/s</p>
-    </div>
-
-    <!-- Video cutting options (Input fields for start and end time) -->
-    <div v-if="displayedVideo && !isLoading" class="cut-container">
-      <div>
-        <p>Start Time (in seconds):</p>
-        <v-text-field
-          v-model="startTime"
-          type="number"
-          :min="0"
-          :max="duration"
-          :step="0.1"
-          label="Start Time"
-          required
-        />
-      </div>
-      <div>
-        <p>End Time (in seconds):</p>
-        <v-text-field
-          v-model="endTime"
-          type="number"
-          :min="0"
-          :max="duration"
-          :step="0.1"
-          label="End Time"
-          required
-        />
+    <div class="d-flex flex-row align-self-start">
+      <div class="video-details">
+        <p v-if="duration">Duration: {{ duration }}s</p>
+        <p v-if="framerate">Framerate: {{ framerate }}fps</p>
+        <p v-if="height && width">Dimensions: {{ width }} x {{ height }}</p>
+        <p v-if="codec">Codec: {{ String(codec).charAt(0).toUpperCase() + String(codec).slice(1) }}</p>
+        <p v-if="bitrate">Bitrate: {{ Math.round(bitrate / 1000) }} kBit/s</p>
       </div>
 
-      <v-btn class="cut-video-button" @click="cutVideo">
-        Cut Video
-      </v-btn>
+      <!-- Video cutting options (Input fields for start and end time) -->
+      <div v-if="displayedVideo && !isLoading" class="cut-container">
+        <div>
+          <p>Start Time (in seconds):</p>
+          <v-text-field
+            v-model="startTime"
+            type="number"
+            :min="0"
+            :max="duration"
+            :step="0.1"
+            label="Start Time"
+            required
+          />
+        </div>
+        <div>
+          <p>End Time (in seconds):</p>
+          <v-text-field
+            v-model="endTime"
+            type="number"
+            :min="0"
+            :max="duration"
+            :step="0.1"
+            label="End Time"
+            required
+          />
+        </div>
+
+        <v-btn class="cut-video-button" @click="cutVideo">
+          Cut Video
+        </v-btn>
+      </div>
     </div>
 
     <v-btn class="continue-button" :disabled="!framerate" @click="moveToSegmentation">
@@ -255,6 +256,8 @@ const cutVideo = async () => {
 
 .video-details {
   align-self: start;
+  padding-left: 1em;
+  padding-right: 2em;
 }
 
 .continue-button {

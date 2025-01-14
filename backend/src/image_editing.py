@@ -1,4 +1,5 @@
 import io
+import math
 import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -28,6 +29,7 @@ angle_range = 10
 kernel_list = np.zeros((max_movement, np.floor(180 / angle_range).astype(int)), dtype='object')
 kernel_list[:, :] = None
 
+
 async def save_background(file: UploadFile, video_id):
     path = get_background_image(video_id, "temp_background" + Path(file.filename).suffix)
     image_data = io.BytesIO(await file.read())
@@ -44,13 +46,12 @@ async def save_background(file: UploadFile, video_id):
 
 
 async def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip):
-
-    frames_paths = sorted(sv.list_files_with_extensions(directory=get_foreground_temp_image_folder(video_id).__str__(), extensions=["png"]))
+    frames_paths = sorted(sv.list_files_with_extensions(directory=get_foreground_temp_image_folder(video_id).__str__(),
+                                                        extensions=["png"]))
     prev_frame = cv2.imread(frames_paths[0].__str__())
     prev_frame = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2BGRA)
     _, prev_center_x, _, _, prev_center_y, _ = get_max_min_center_of_object(prev_frame)
     base_image = np.zeros_like(prev_frame)
-    prev_frame = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 
     image_path = get_motion_blur_image(video_id, "motion_blur.png")
     cv2.imwrite(image_path, base_image)
@@ -79,57 +80,50 @@ async def generate_motion_blur_image(video_id, blur_strength, blur_transparency,
     print("Precalculating kernels took: ", timer() - start_time, " s")
 
     current_frame = 1 + frame_skip
+    current_frame_path = frames_paths[current_frame - 1].__str__()
+    to_be_blurred_frame = cv2.imread(current_frame_path, cv2.IMREAD_UNCHANGED)
+    min_x, center_x, max_x, min_y, center_y, max_y = get_max_min_center_of_object(to_be_blurred_frame)
     while True:
         if current_frame >= len(frames_paths):
             break
 
-        print("---------------------")
-        next_frame = cv2.imread(frames_paths[current_frame].__str__())
-        next_frame = cv2.cvtColor(next_frame, cv2.COLOR_BGR2GRAY)
-
         start = timer()
-        flow = cv2.calcOpticalFlowFarneback(prev_frame, next_frame, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-        mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1], angleInDegrees=True)
-
         print(current_frame)
 
-        current_frame_path = frames_paths[current_frame - 1].__str__()
-        to_be_blurred_frame = cv2.imread(current_frame_path, cv2.IMREAD_UNCHANGED)
+        next_index = current_frame + 1 + frame_skip
+        if next_index >= len(frames_paths):
+            next_index = len(frames_paths) - 1
+        next_frame_path = frames_paths[next_index].__str__()
+        next_frame = cv2.imread(next_frame_path, cv2.IMREAD_UNCHANGED)
+        next_min_x, next_center_x, next_max_x, next_min_y, next_center_y, next_max_y = get_max_min_center_of_object(
+            next_frame)
 
-        min_x, center_x, max_x, min_y, center_y, max_y = get_max_min_center_of_object(to_be_blurred_frame)
-        delta_x = center_x - prev_center_x
-        delta_y = center_y - prev_center_y
-        angle = np.degrees(np.arctan2(delta_y, delta_x))
+        delta_x = center_x - next_center_x
+        delta_y = center_y - next_center_y
+        angle = np.degrees(np.arctan2(delta_x, delta_y)) + 90
         magnitude = np.sqrt(delta_x ** 2 + delta_y ** 2) / np.sqrt((max_x - min_x) ** 2 + (max_y - min_y) ** 2) * 8
         magnitude = np.min([magnitude, 5])
 
-        length = np.zeros_like(magnitude)
-        length = cv2.normalize(magnitude, length, min_movement, max_movement, cv2.NORM_MINMAX)
-        ranged_magnitude = length[min_y:max_y, min_x:max_x]
-        ranged_angle = ang[min_y:max_y, min_x:max_x]
-        print(np.average(ranged_magnitude), np.median(ranged_magnitude), magnitude)
-        print(np.average(ranged_angle), np.median(ranged_angle), angle)
-
-        blurred_frame = create_blurred_frame_global_kernel(to_be_blurred_frame, magnitude, angle, min_x, min_y, max_x, max_y)
-        blurred_frame[:, :, 3] = (blurred_frame[:, :, 3] * 0.5 * blur_transparency).astype(np.uint8)
+        blurred_frame = create_blurred_frame_global_kernel(to_be_blurred_frame, magnitude, angle, min_x, min_y, max_x,max_y)
+        blurred_frame[:, :, 3] = (blurred_frame[:, :, 3] * blur_transparency).astype(np.uint8)
 
         blur_path = get_motion_blur_folder(video_id).joinpath(Path(os.path.basename(current_frame_path)).stem + ".png")
         cv2.imwrite(blur_path, blurred_frame)
         blur_image = Image.open(blur_path)
-        final_image.paste(blur_image, (0, 0), blur_image)
+        final_image.alpha_composite(blur_image)
         end = timer()
         print("--- %s seconds ---" % (end - start))
         print("---------------------")
 
-        prev_frame = next_frame
-        prev_center_x = center_x
-        prev_center_y = center_y
         current_frame += 1 + frame_skip
+        min_x, center_x, max_x, min_y, center_y, max_y = next_min_x, next_center_x, next_max_x, next_min_y, next_center_y, next_max_y
+        current_frame_path = next_frame_path
+        to_be_blurred_frame = next_frame
     last_frame = Image.open(frames_paths[len(frames_paths) - 1].__str__())
-    final_image.paste(last_frame, (0, 0), last_frame)
+    final_image.alpha_composite(last_frame)
     final_image.save(image_path.__str__())
-    final_image.show()
     return image_path
+
 
 def get_max_min_center_of_object(frame):
     alpha_channel = frame[..., 3]
@@ -140,15 +134,16 @@ def get_max_min_center_of_object(frame):
     center_y = (max_y + min_y) / 2
     return min_x, center_x, max_x, min_y, center_y, max_y
 
+
 def create_blurred_frame_global_kernel(frame, magnitude, angle, min_x, min_y, max_x, max_y):
     global kernel_list
 
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
     movement = np.floor(magnitude).astype(int)
     direction = np.floor((angle % 180) / angle_range).astype(int)
-    print("Values: ", magnitude, angle)
     kernel = kernel_list[movement - 1][direction - 1]
     return cv2.filter2D(frame, -1, kernel)
+
 
 def create_blurred_frame_experimental(frame, magnitude, angle, min_x, min_y, max_x, max_y):
     global kernel_list
@@ -164,7 +159,7 @@ def create_blurred_frame_experimental(frame, magnitude, angle, min_x, min_y, max
     calc_min_y = min_y - max_kernel_size
     calc_max_y = max_y + max_kernel_size
 
-    def process_pixel(x,y):
+    def process_pixel(x, y):
         movement = np.floor(length[y][x]).astype(int)
         direction = np.floor((angle[y][x] % 180) / angle_range).astype(int)
         kernel = kernel_list[movement - 1][direction - 1]
@@ -177,6 +172,7 @@ def create_blurred_frame_experimental(frame, magnitude, angle, min_x, min_y, max
             blurred_roi = cv2.filter2D(roi, -1, kernel)
             return blurred_roi[kernel_size // 2, kernel_size // 2]
         return frame[y, x]
+
     with ThreadPoolExecutor():
         for y in range(calc_min_y, calc_max_y):
             for x in range(calc_min_x, calc_max_x):
@@ -239,16 +235,3 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
         print(f"Multiple instance effect created and saved to {output_path}")
     except Exception as e:
         print(f"Error creating multiple instance effect: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
