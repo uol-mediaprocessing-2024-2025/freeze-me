@@ -13,6 +13,7 @@ MOTION_BLUR_FOLDER = "blurred-frames"
 TEMP_FILE_NAME = "temp.mp4"
 CHECKPOINT_PATH = "checkpoints"
 CONFIG_PATH = "configs"
+MULTIPLE_INSTANCES_FOLDER = "multiple_instances"
 WORKFLOW_DATA_FILE="workflow.json"
 
 def get_config_path():
@@ -72,8 +73,11 @@ def get_motion_blur_folder(video_id):
 def get_motion_blur_image(video_id, image_name):
     return get_video_folder_path(video_id).joinpath(image_name)
 
+def get_multiple_instances_folder(video_id):
+    return get_video_folder_path(video_id).joinpath(MULTIPLE_INSTANCES_FOLDER)
+
 def get_multiple_instances_image(video_id, image_name):
-    return get_video_folder_path(video_id).joinpath(image_name)
+    return get_multiple_instances_folder(video_id).joinpath(image_name)
 
 def get_images_path(video_id):
     return get_video_folder_path(video_id).joinpath(IMAGE_PATH)
@@ -113,3 +117,4 @@ def create_all_paths(video_id):
     get_background_temp_image_folder(video_id).mkdir(parents=True, exist_ok=True)
     get_preview_mask_frames_folder_path(video_id).mkdir(parents=True, exist_ok=True)
     get_motion_blur_folder(video_id).mkdir(parents=True, exist_ok=True)
+    get_multiple_instances_folder(video_id).mkdir(parents=True, exist_ok=True)

@@ -9,6 +9,7 @@ import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
+from starlette.responses import StreamingResponse
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
@@ -19,7 +20,8 @@ from video_editing import add_new_point_to_segmentation
 from video_editing import get_masked_video
 from video_editing import cut_video
 from video_editing import get_frame
-
+from path_manager import create_all_paths, get_multiple_instances_image
+from image_editing import create_multiple_instance_effect
 from image_editing import save_background
 from image_editing import generate_motion_blur_image
 
@@ -200,3 +202,23 @@ async def get_first_frame_of_video(video_id: str):
             status_code=500,
             content={"message": "Failed to get first frame", "error": str(e)},
         )
+
+@app.get("/effect/multiple-instances/")
+async def multiple_instance_effect(video_id: str, instance_count: int, frame_skip: int):
+    """
+    API-Endpunkt für den Multiple Instance Effect
+    """
+    try:
+        create_all_paths(video_id)  # Sicherstellen, dass alle benötigten Ordner existieren
+        output_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
+
+        # Effekt anwenden
+        create_multiple_instance_effect(video_id, str(output_path), instance_count, frame_skip)
+
+        if not output_path.exists():
+            raise FileNotFoundError(f"Das Bild wurde nicht unter {output_path} gespeichert.")
+
+        return {"status": "success", "output_path": str(output_path)}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
