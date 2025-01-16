@@ -198,7 +198,7 @@ const applyMultipleInstancesEffect = async () => {
                       { text: 'Uniform', value: 'uniform' },
                       { text: 'Gradient', value: 'gradient' },
                     ]"
-                    item-text="text"
+                    item-title="text"
                     item-value="value"
                     label="Select Transparency Mode"
                   ></v-select>
