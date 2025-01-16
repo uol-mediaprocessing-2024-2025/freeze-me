@@ -203,17 +203,14 @@ async def get_first_frame_of_video(video_id: str):
             content={"message": "Failed to get first frame", "error": str(e)},
         )
 
+
 @app.get("/effect/multiple-instances/")
-async def multiple_instance_effect(video_id: str, instance_count: int, frame_skip: int):
-    """
-    API-Endpunkt für den Multiple Instance Effect
-    """
+async def multiple_instance_effect(video_id: str, instance_count: int, frame_skip: int, transparency_mode: str = "uniform", transparency_strength: float = 0.5):
     try:
-        create_all_paths(video_id)  # Sicherstellen, dass alle benötigten Ordner existieren
+        create_all_paths(video_id)
         output_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
 
-        # Effekt anwenden
-        create_multiple_instance_effect(video_id, str(output_path), instance_count, frame_skip)
+        create_multiple_instance_effect(video_id, str(output_path), instance_count, frame_skip, transparency_mode, transparency_strength)
 
         if not output_path.exists():
             raise FileNotFoundError(f"Das Bild wurde nicht unter {output_path} gespeichert.")
@@ -221,4 +218,3 @@ async def multiple_instance_effect(video_id: str, instance_count: int, frame_ski
         return FileResponse(output_path, media_type="image/png")
     except Exception as e:
         return {"status": "error", "message": str(e)}
-

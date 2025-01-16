@@ -14,16 +14,18 @@ const blurTransparency = ref(1);
 const frameSkip = ref(1); // Frame-Abstand für Multiple Instances
 const instanceCount = ref(5); // Anzahl der Instanzen für Multiple Instances
 const multipleInstancePreview = ref(""); // Vorschau für Multiple Instances
+const transparencyMode = ref("uniform"); // Transparenzmodus: uniform oder gradient
+const transparencyStrength = ref(0.5); // Transparenzstärke für den Multiple Instances Effekt
 
 onMounted(async () => {
   isLoading.value = true;
   videoId.value = store.selectedVideoId;
   if (videoId.value == null) {
-    router.push({path: '/'})
+    router.push({path: '/'});
     return;
   }
   if (store.selectedBackground != null) {
-    uploadedBackground.value = store.selectedBackground
+    uploadedBackground.value = store.selectedBackground;
   }
   isLoading.value = false;
 });
@@ -85,20 +87,25 @@ const applyMultipleInstancesEffect = async () => {
     alert("Bitte wählen Sie ein Video aus.");
     return;
   }
+
   isLoading.value = true;
+
   try {
+    // API-Aufruf mit den zusätzlichen Parametern für Transparenz
     const response = await axios.get(
       `${store.apiUrl}/effect/multiple-instances/`,
       {
         params: {
           video_id: videoId.value,
           instance_count: instanceCount.value,
-          frame_skip: frameSkip.value, // Frame-Abstand übergeben
+          frame_skip: frameSkip.value,
+          transparency_mode: transparencyMode.value, // "uniform" oder "gradient"
+          transparency_strength: transparencyStrength.value, // Skaliert von 0 bis 1
         },
         responseType: "blob",
       }
     );
-    console.log(response)
+
     multipleInstancePreview.value = URL.createObjectURL(response.data);
   } catch (error) {
     console.error("Fehler beim Anwenden des Multiple Instances Effekts:", error);
@@ -107,7 +114,6 @@ const applyMultipleInstancesEffect = async () => {
     isLoading.value = false;
   }
 };
-
 
 
 </script>
@@ -184,6 +190,29 @@ const applyMultipleInstancesEffect = async () => {
                     :max="200"
                     :min="1"
                     :step="1"
+                  ></v-slider>
+                  <div class="text-caption">Transparency Mode ({{transparencyMode}})</div>
+                  <v-select
+                    v-model="transparencyMode"
+                    :items="[
+                      { text: 'Uniform', value: 'uniform' },
+                      { text: 'Gradient', value: 'gradient' },
+                    ]"
+                    item-text="text"
+                    item-value="value"
+                    label="Select Transparency Mode"
+                  ></v-select>
+
+
+                  <div class="text-caption">Transparency Strength ({{transparencyStrength}})</div>
+                  <v-slider
+                    v-model="transparencyStrength"
+                    show-ticks="always"
+                    tick-size="5"
+                    thumb-label
+                    :max="1"
+                    :min="0"
+                    :step="0.01"
                   ></v-slider>
                 </div>
                 <v-card class="image-preview-container">
@@ -265,4 +294,3 @@ const applyMultipleInstancesEffect = async () => {
   max-height: 80%;
 }
 </style>
-
