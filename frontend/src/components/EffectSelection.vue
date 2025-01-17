@@ -14,7 +14,7 @@ const blurTransparency = ref(1);
 const frameSkip = ref(1); // Frame-Abstand für Multiple Instances
 const instanceCount = ref(5); // Anzahl der Instanzen für Multiple Instances
 const multipleInstancePreview = ref(""); // Vorschau für Multiple Instances
-const transparencyMode = ref("uniform"); // Transparenzmodus: uniform oder gradient
+const transparencyMode = ref("uniform"); // Transparenzmodus: uniform, gradient linear oder gradient quadratic
 const transparencyStrength = ref(0.5); // Transparenzstärke für den Multiple Instances Effekt
 
 onMounted(async () => {
@@ -44,7 +44,7 @@ const handleBackgroundUpload = async (event) => {
       console.log("Uploading background for: " + videoId.value);
 
       const background = await axios.post(`${store.apiUrl}/upload-background`, backgroundFormData, {
-          responseType: 'blob',
+        responseType: 'blob',
       });
       uploadedBackground.value = URL.createObjectURL(background.data);
       store.selectedBackground = background.data;
@@ -70,7 +70,7 @@ const generateImage = async () => {
     const transparencyParam = "&blur_transparency=" + blurTransparency.value;
     const skipParam = "&frame_skip=" + frameSkip.value;
     const preview_image = await axios.get(`${store.apiUrl}/get-motion-blur-preview?` + videoIdParam + strengthParam + transparencyParam + skipParam, {
-        responseType: 'blob',
+      responseType: 'blob',
     });
 
     motionBlurPreview.value = URL.createObjectURL(preview_image.data);
@@ -93,17 +93,17 @@ const applyMultipleInstancesEffect = async () => {
   try {
     // API-Aufruf mit den zusätzlichen Parametern für Transparenz
     const response = await axios.get(
-      `${store.apiUrl}/effect/multiple-instances/`,
-      {
-        params: {
-          video_id: videoId.value,
-          instance_count: instanceCount.value,
-          frame_skip: frameSkip.value,
-          transparency_mode: transparencyMode.value, // "uniform" oder "gradient"
-          transparency_strength: transparencyStrength.value, // Skaliert von 0 bis 1
-        },
-        responseType: "blob",
-      }
+        `${store.apiUrl}/effect/multiple-instances/`,
+        {
+          params: {
+            video_id: videoId.value,
+            instance_count: instanceCount.value,
+            frame_skip: frameSkip.value,
+            transparency_mode: transparencyMode.value, // "uniform", "gradient linear", oder "gradient quadratic"
+            transparency_strength: transparencyStrength.value, // Skaliert von 0 bis 1
+          },
+          responseType: "blob",
+        }
     );
 
     multipleInstancePreview.value = URL.createObjectURL(response.data);
@@ -139,29 +139,35 @@ const applyMultipleInstancesEffect = async () => {
                   <div v-if="uploadedBackground" @click="openFileDialog" class="background-preview">
                     <img alt="Uploaded background" :src="uploadedBackground">
                   </div>
-                  <div v-else @click="openFileDialog" class="p-5 rounded border w-100 h-75 text-center align-content-center">
+                  <div v-else @click="openFileDialog"
+                       class="p-5 rounded border w-100 h-75 text-center align-content-center">
                     Click to upload a background
                   </div>
-                  <v-file-input label="Upload a Background" @change="handleBackgroundUpload" accept="image/*" class="d-none"
-                        prepend-icon="mdi-upload"></v-file-input>
+                  <v-file-input label="Upload a Background" @change="handleBackgroundUpload" accept="image/*"
+                                class="d-none"
+                                prepend-icon="mdi-upload"></v-file-input>
                 </div>
                 <div class="settings-container">
                   <h3 class="pb-2">Settings</h3>
-                  <div class="text-caption">Strength of Blur-Effect ({{blurStrength}})</div>
-                  <v-slider v-model="blurStrength" show-ticks="always" tick-size="5" thumb-label :max="5" :min="1" :step="1"></v-slider>
-                  <div class="text-caption">Transparency of Blur-Effect ({{blurTransparency}})</div>
-                  <v-slider v-model="blurTransparency" show-ticks="always" tick-size="5" thumb-label :max="1" :min="0" :step="0.1"></v-slider>
-                  <div class="text-caption">Frame Skip [EXPERIMENTAL] ({{frameSkip}})</div>
-                  <v-slider v-model="frameSkip" show-ticks="always" tick-size="5" thumb-label :max="20" :min="0" :step="1"></v-slider>
+                  <div class="text-caption">Strength of Blur-Effect ({{ blurStrength }})</div>
+                  <v-slider v-model="blurStrength" show-ticks="always" tick-size="5" thumb-label :max="5" :min="1"
+                            :step="1"></v-slider>
+                  <div class="text-caption">Transparency of Blur-Effect ({{ blurTransparency }})</div>
+                  <v-slider v-model="blurTransparency" show-ticks="always" tick-size="5" thumb-label :max="1" :min="0"
+                            :step="0.1"></v-slider>
+                  <div class="text-caption">Frame Skip [EXPERIMENTAL] ({{ frameSkip }})</div>
+                  <v-slider v-model="frameSkip" show-ticks="always" tick-size="5" thumb-label :max="20" :min="0"
+                            :step="1"></v-slider>
                 </div>
               </div>
               <v-card class="image-preview-container">
                 <div>
                   <h3 class="pb-2">Image Preview</h3>
-                  <img v-if="motionBlurPreview" :src="motionBlurPreview" alt="preview of generated image" class="image-preview">
+                  <img v-if="motionBlurPreview" :src="motionBlurPreview" alt="preview of generated image"
+                       class="image-preview">
                   <p class="pt-5" v-else> Press "Generate Image" to see a preview of the image</p>
                 </div>
-                <v-btn @click="generateImage" :disabled="isLoading" >Generate Image</v-btn>
+                <v-btn @click="generateImage" :disabled="isLoading">Generate Image</v-btn>
               </v-card>
             </div>
           </v-tabs-window-item>
@@ -171,60 +177,60 @@ const applyMultipleInstancesEffect = async () => {
               <div class="effect-container">
                 <div class="user-input">
                   <h3 class="pb-2">Settings</h3>
-                  <div class="text-caption">Number of Instances ({{instanceCount}})</div>
+                  <div class="text-caption">Number of Instances ({{ instanceCount }})</div>
                   <v-slider
-                    v-model="instanceCount"
-                    show-ticks="always"
-                    tick-size="5"
-                    thumb-label
-                    :max="100"
-                    :min="1"
-                    :step="1"
+                      v-model="instanceCount"
+                      show-ticks="always"
+                      tick-size="5"
+                      thumb-label
+                      :max="100"
+                      :min="1"
+                      :step="1"
                   ></v-slider>
-                  <div class="text-caption">Frame Skip ({{frameSkip}})</div>
+                  <div class="text-caption">Frame Skip ({{ frameSkip }})</div>
                   <v-slider
-                    v-model="frameSkip"
-                    show-ticks="always"
-                    tick-size="5"
-                    thumb-label
-                    :max="200"
-                    :min="1"
-                    :step="1"
+                      v-model="frameSkip"
+                      show-ticks="always"
+                      tick-size="5"
+                      thumb-label
+                      :max="200"
+                      :min="1"
+                      :step="1"
                   ></v-slider>
-                  <div class="text-caption">Transparency Mode ({{transparencyMode}})</div>
+                  <div class="text-caption">Transparency Mode ({{ transparencyMode }})</div>
                   <v-select
-                    v-model="transparencyMode"
-                    :items="[
+                      v-model="transparencyMode"
+                      :items="[
                       { text: 'Uniform', value: 'uniform' },
-                      { text: 'Gradient', value: 'gradient' },
+                      { text: 'Gradient Linear', value: 'gradient linear' },
+                      { text: 'Gradient Quadratic', value: 'gradient quadratic' },
                     ]"
-                    item-title="text"
-                    item-value="value"
-                    label="Select Transparency Mode"
+                      item-title="text"
+                      item-value="value"
+                      label="Select Transparency Mode"
                   ></v-select>
 
-
-                  <div class="text-caption">Transparency Strength ({{transparencyStrength}})</div>
+                  <div class="text-caption">Transparency Strength ({{ transparencyStrength }})</div>
                   <v-slider
-                    v-model="transparencyStrength"
-                    show-ticks="always"
-                    tick-size="5"
-                    thumb-label
-                    :max="1"
-                    :min="0"
-                    :step="0.01"
+                      v-model="transparencyStrength"
+                      show-ticks="always"
+                      tick-size="5"
+                      thumb-label
+                      :max="1"
+                      :min="0"
+                      :step="0.01"
                   ></v-slider>
                 </div>
                 <v-card class="image-preview-container">
                   <div>
                     <h3 class="pb-2">Image Preview</h3>
                     <img
-                      v-if="multipleInstancePreview"
-                      :src="multipleInstancePreview"
-                      alt="preview of generated image"
-                      class="image-preview"
+                        v-if="multipleInstancePreview"
+                        :src="multipleInstancePreview"
+                        alt="preview of generated image"
+                        class="image-preview"
                     />
-                    <p class="pt-5" v-else>
+                    <p class="pt-5">
                       Press "Generate Image" to see a preview of the image
                     </p>
                   </div>
@@ -244,12 +250,14 @@ const applyMultipleInstancesEffect = async () => {
 .tab {
   height: 90%;
 }
+
 .effect-container {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-evenly;
 }
+
 .user-input {
   display: flex;
   flex-direction: column;
@@ -262,11 +270,13 @@ const applyMultipleInstancesEffect = async () => {
   padding: 1em;
   height: 30%;
 }
+
 .background-preview {
   height: 80%;
   width: 100%;
 }
-.background-preview img{
+
+.background-preview img {
   max-height: 100%;
   max-width: 100%;
 }

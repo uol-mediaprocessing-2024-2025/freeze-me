@@ -201,9 +201,12 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
 
             if transparency_mode == "uniform":
                 alpha = int(255 * transparency_strength)
-            elif transparency_mode == "gradient":
+            elif transparency_mode == "gradient linear":
                 alpha = int(255 * ((i + 1) / instance_count) * transparency_strength)
                 alpha = max(1, min(255, alpha))  # Sicherstellen, dass Alpha mindestens 1 ist
+            elif transparency_mode == "gradient quadratic":
+                alpha = int(255 * ((i + 1) / instance_count) ** 0.5 * transparency_strength)
+
 
             print(f"Mode: {transparency_mode}, Alpha Value for instance {i + 1}/{instance_count}: {alpha}")
 
@@ -226,7 +229,7 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
             # Alpha-Kanal aktualisieren (maximieren für additive Transparenz)
             background_frame[:, :, 3][mask] = np.maximum(background_frame[:, :, 3][mask], foreground_alpha[mask])
 
-            # Den letzten Vordergrund-Frame explizit hinzufügen
+            # Den letzten Vordergrund-Frame hinzufügen
             last_foreground_frame_path = str(foreground_frames[-1])
             last_foreground_frame = cv2.imread(last_foreground_frame_path, cv2.IMREAD_UNCHANGED)
 
@@ -244,6 +247,3 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
 
     except Exception as e:
         print(f"Error creating multiple instance effect: {e}")
-
-
-

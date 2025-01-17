@@ -81,7 +81,6 @@ async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_tra
             content={"message": "Failed to create motion blur preview", "error": str(e)},
         )
 
-
 @app.get("/video-details")
 async def video_details(video_id: str):
     try:
@@ -202,7 +201,6 @@ async def get_first_frame_of_video(video_id: str):
             status_code=500,
             content={"message": "Failed to get first frame", "error": str(e)},
         )
-
 
 @app.get("/effect/multiple-instances/")
 async def multiple_instance_effect(video_id: str, instance_count: int, frame_skip: int, transparency_mode: str = "uniform", transparency_strength: float = 0.5):
