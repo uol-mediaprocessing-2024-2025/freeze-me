@@ -21,7 +21,8 @@ from video_editing import get_masked_video
 from video_editing import cut_video
 from video_editing import get_frame
 from path_manager import create_all_paths, get_multiple_instances_image
-from image_editing import create_multiple_instance_effect
+from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed, \
+    create_multiple_instance_effect_middle
 from image_editing import save_background
 from image_editing import generate_motion_blur_image
 
@@ -201,7 +202,7 @@ async def get_first_frame_of_video(video_id: str):
             status_code=500,
             content={"message": "Failed to get first frame", "error": str(e)},
         )
-
+"""
 @app.get("/effect/multiple-instances/")
 async def multiple_instance_effect(video_id: str, instance_count: int, frame_skip: int, transparency_mode: str = "uniform", transparency_strength: float = 0.5):
     try:
@@ -216,3 +217,41 @@ async def multiple_instance_effect(video_id: str, instance_count: int, frame_ski
         return FileResponse(output_path, media_type="image/png")
     except Exception as e:
         return {"status": "error", "message": str(e)}
+"""
+@app.get("/effect/multiple-instances/")
+async def multiple_instance_effect(
+    video_id: str,
+    instance_count: int,
+    frame_skip: int,
+    transparency_mode: str = "uniform",
+    transparency_strength: float = 0.5,
+    frame_reference: str = "last",  # "first", "middle" oder "last"
+    frame_offset: int = 0  # Optionaler Offset für den Referenzframe
+):
+    try:
+        create_all_paths(video_id)
+        output_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
+
+        # Wähle die Methode basierend auf frame_reference
+        if frame_reference == "middle":
+            create_multiple_instance_effect_middle(
+                video_id,
+                str(output_path),
+                instance_count,
+                frame_skip,
+                transparency_mode,
+                transparency_strength,
+                frame_offset
+            )
+        elif frame_reference == "first":
+            create_multiple_instance_effect_reversed(video_id, str(output_path), instance_count, frame_skip, transparency_mode, transparency_strength)
+        else:
+            create_multiple_instance_effect(video_id, str(output_path), instance_count, frame_skip, transparency_mode, transparency_strength)
+
+        if not output_path.exists():
+            raise FileNotFoundError(f"Das Bild wurde nicht unter {output_path} gespeichert.")
+
+        return FileResponse(output_path, media_type="image/png")
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+

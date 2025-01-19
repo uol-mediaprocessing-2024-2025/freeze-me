@@ -16,6 +16,9 @@ const instanceCount = ref(5); // Anzahl der Instanzen für Multiple Instances
 const multipleInstancePreview = ref(""); // Vorschau für Multiple Instances
 const transparencyMode = ref("uniform"); // Transparenzmodus: uniform, gradient linear oder gradient quadratic
 const transparencyStrength = ref(0.5); // Transparenzstärke für den Multiple Instances Effekt
+const selectedEffectType = ref("last");
+const frameOffset = ref(0); //
+
 
 onMounted(async () => {
   isLoading.value = true;
@@ -91,20 +94,19 @@ const applyMultipleInstancesEffect = async () => {
   isLoading.value = true;
 
   try {
-    // API-Aufruf mit den zusätzlichen Parametern für Transparenz
-    const response = await axios.get(
-        `${store.apiUrl}/effect/multiple-instances/`,
-        {
-          params: {
-            video_id: videoId.value,
-            instance_count: instanceCount.value,
-            frame_skip: frameSkip.value,
-            transparency_mode: transparencyMode.value, // "uniform", "gradient linear", oder "gradient quadratic"
-            transparency_strength: transparencyStrength.value, // Skaliert von 0 bis 1
-          },
-          responseType: "blob",
-        }
-    );
+    // API-Aufruf mit den zusätzlichen Parametern
+    const response = await axios.get(`${store.apiUrl}/effect/multiple-instances/`, {
+      params: {
+        video_id: videoId.value,
+        instance_count: instanceCount.value,
+        frame_skip: frameSkip.value,
+        transparency_mode: transparencyMode.value,
+        transparency_strength: transparencyStrength.value,
+        frame_reference: selectedEffectType.value, // "first", "middle", oder "last"
+        frame_offset: selectedEffectType.value === "middle" ? frameOffset.value : 0, // Offset nur bei "middle"
+      },
+      responseType: "blob",
+    });
 
     multipleInstancePreview.value = URL.createObjectURL(response.data);
   } catch (error) {
@@ -114,6 +116,7 @@ const applyMultipleInstancesEffect = async () => {
     isLoading.value = false;
   }
 };
+
 
 
 </script>
@@ -165,7 +168,7 @@ const applyMultipleInstancesEffect = async () => {
                   <h3 class="pb-2">Image Preview</h3>
                   <img v-if="motionBlurPreview" :src="motionBlurPreview" alt="preview of generated image"
                        class="image-preview">
-                  <p class="pt-5" v-else> Press "Generate Image" to see a preview of the image</p>
+                  <p class="pt-5"> Press "Generate Image" to see a preview of the image</p>
                 </div>
                 <v-btn @click="generateImage" :disabled="isLoading">Generate Image</v-btn>
               </v-card>
@@ -197,14 +200,39 @@ const applyMultipleInstancesEffect = async () => {
                       :min="1"
                       :step="1"
                   ></v-slider>
+                  <div class="text-caption">Select Effect Type ({{ selectedEffectType }})</div>
+                  <v-select
+                      v-model="selectedEffectType"
+                      :items="[
+                       { text: 'Move the future', value: 'first' },
+                       { text: 'Show past', value: 'last' },
+                       { text: 'Make me center', value: 'middle' }
+                      ]"
+                      item-title="text"
+                      item-value="value"
+                      label="Select Effect Type"
+                  ></v-select>
+                  <div v-if="selectedEffectType === 'middle'" class="text-caption">
+                    <div class="text-caption">Frame Offset ({{ frameOffset }})</div>
+                    <v-slider
+                        v-model="frameOffset"
+                        show-ticks="always"
+                        tick-size="5"
+                        thumb-label
+                        :max="100"
+                        :min="-100"
+                        :step="1"
+                        label="Frame Offset"
+                    ></v-slider>
+                  </div>
                   <div class="text-caption">Transparency Mode ({{ transparencyMode }})</div>
                   <v-select
                       v-model="transparencyMode"
                       :items="[
-                      { text: 'Uniform', value: 'uniform' },
-                      { text: 'Gradient Linear', value: 'gradient linear' },
-                      { text: 'Gradient Quadratic', value: 'gradient quadratic' },
-                    ]"
+                        { text: 'Uniform', value: 'uniform' },
+                        { text: 'Gradient Linear', value: 'gradient linear' },
+                        { text: 'Gradient Quadratic', value: 'gradient quadratic' },
+                      ]"
                       item-title="text"
                       item-value="value"
                       label="Select Transparency Mode"
