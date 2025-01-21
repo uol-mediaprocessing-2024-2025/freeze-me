@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {store} from "@/store.js";
 import router from "@/router/index.js";
 import axios from "axios";
@@ -18,7 +18,21 @@ const transparencyMode = ref("uniform"); // Transparenzmodus: uniform, gradient 
 const transparencyStrength = ref(0.5); // Transparenzstärke für den Multiple Instances Effekt
 const selectedEffectType = ref("last");
 const frameOffset = ref(0); //
+const frameOffsetMin = ref(0); // Minimaler Wert für den Offset
+const frameOffsetMax = ref(100); // Maximaler Wert für den Offset
 
+watch(selectedEffectType, (newValue) => {
+  if (newValue === "last") {
+    frameOffsetMin.value = -50; //
+    frameOffsetMax.value = 0;
+  } else if (newValue === "middle") {
+    frameOffsetMin.value = -50;
+    frameOffsetMax.value = 50;
+  } else if (newValue === "first") {
+    frameOffsetMin.value = 0;
+    frameOffsetMax.value = 50;
+  }
+});
 
 onMounted(async () => {
   isLoading.value = true;
@@ -94,7 +108,6 @@ const applyMultipleInstancesEffect = async () => {
   isLoading.value = true;
 
   try {
-    // API-Aufruf mit den zusätzlichen Parametern
     const response = await axios.get(`${store.apiUrl}/effect/multiple-instances/`, {
       params: {
         video_id: videoId.value,
@@ -103,7 +116,7 @@ const applyMultipleInstancesEffect = async () => {
         transparency_mode: transparencyMode.value,
         transparency_strength: transparencyStrength.value,
         frame_reference: selectedEffectType.value, // "first", "middle", oder "last"
-        frame_offset: selectedEffectType.value === "middle" ? frameOffset.value : 0, // Offset nur bei "middle"
+        frame_offset: frameOffset.value, // Offset wird immer übergeben
       },
       responseType: "blob",
     });
@@ -116,7 +129,6 @@ const applyMultipleInstancesEffect = async () => {
     isLoading.value = false;
   }
 };
-
 
 
 </script>
@@ -212,17 +224,17 @@ const applyMultipleInstancesEffect = async () => {
                       item-value="value"
                       label="Select Effect Type"
                   ></v-select>
-                  <div v-if="selectedEffectType === 'middle'" class="text-caption">
+                  <div v-if="selectedEffectType === 'middle' || selectedEffectType === 'first' || selectedEffectType === 'last'" class="text-caption">
                     <div class="text-caption">Frame Offset ({{ frameOffset }})</div>
                     <v-slider
-                        v-model="frameOffset"
-                        show-ticks="always"
-                        tick-size="5"
-                        thumb-label
-                        :max="100"
-                        :min="-100"
-                        :step="1"
-                        label="Frame Offset"
+                      v-model="frameOffset"
+                      show-ticks="always"
+                      tick-size="5"
+                      thumb-label
+                      :max="frameOffsetMax"
+                      :min="frameOffsetMin"
+                      :step="1"
+                      label="Frame Offset"
                     ></v-slider>
                   </div>
                   <div class="text-caption">Transparency Mode ({{ transparencyMode }})</div>
