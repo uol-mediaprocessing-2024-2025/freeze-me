@@ -17,6 +17,7 @@ from path_manager import get_background_image
 from path_manager import get_motion_blur_folder
 from path_manager import get_motion_blur_image
 
+
 last_strength = -1
 last_transparency = -1
 last_frame_skip = -1
@@ -457,3 +458,4 @@ def create_multiple_instance_effect_middle(
 
     except Exception as e:
         print(f"Error creating multiple instance effect: {e}")
+

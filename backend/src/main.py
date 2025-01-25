@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from starlette.responses import StreamingResponse
 
+
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 from video_editing import get_video_details
@@ -20,17 +21,20 @@ from video_editing import add_new_point_to_segmentation
 from video_editing import get_masked_video
 from video_editing import cut_video
 from video_editing import get_frame
-from path_manager import create_all_paths, get_multiple_instances_image
+from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image
 from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed, \
     create_multiple_instance_effect_middle
 from image_editing import save_background
 from image_editing import generate_motion_blur_image
+from image_effects import process_effect_request
+
 
 from project_data import get_all_projects
 from project_data import get_step_data
 from project_data import create_project
 from project_data import set_current_step
 from project_data import Step
+
 
 app = FastAPI()
 static_ffmpeg.add_paths()
@@ -256,3 +260,40 @@ async def multiple_instance_effect(
         return FileResponse(output_path, media_type="image/png")
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+
+@app.get("/final-effects-preview")
+async def get_final_effects_preview(video_id: str, effect_type: str):
+
+    try:
+        if effect_type == "motion_blur":
+            image_path = get_motion_blur_image(video_id, "motion_blur.png")
+        elif effect_type == "multiple_instances":
+            image_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
+        else:
+            raise ValueError("Invalid effect type provided.")
+
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image for effect type {effect_type} not found.")
+
+        return FileResponse(image_path, media_type="image/png")
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to load final effects preview: {str(e)}"},
+        )
+
+@app.post("/apply-final-effects")
+async def apply_final_effects(video_id: Annotated[str, Form()], brightness: Annotated[float, Form()],
+                              contrast: Annotated[float, Form()], saturation: Annotated[float, Form()]):
+
+    try:
+        output_folder = "output_folder_path"  # Passe dies an deinen Pfad an
+        output_image_path = process_effect_request(video_id, brightness, contrast, saturation, output_folder)
+        return FileResponse(output_image_path, media_type="image/png")
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to apply final effects", "error": str(e)}
+        )

@@ -109,6 +109,7 @@ def get_background_temp_image_folder(video_id):
 def get_background_temp_image_path(video_id, frame_id):
     return get_background_temp_image_folder(video_id).joinpath(str(frame_id).zfill(5) + ".png")
 
+
 def create_all_paths(video_id):
     Path.cwd().joinpath(FOLDER_PATH).mkdir(parents=True, exist_ok=True)
     get_video_folder_path(video_id).mkdir(parents=True, exist_ok=True)

@@ -1,9 +1,10 @@
 // Import Vue Router components and views
-import { createRouter, createWebHistory } from 'vue-router'
-import GalleryView from '../views/GalleryView.vue'
-import MainView from '../views/MainView.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import GalleryView from '../views/GalleryView.vue';
+import MainView from '../views/MainView.vue';
 import SegmentationComponent from "@/components/SegmentationComponent.vue";
 import EffectSelection from "@/components/EffectSelection.vue";
+import FinalEffects from "@/components/FinalEffects.vue"; // Import FinalEffects.vue
 
 // Create and configure the router
 const router = createRouter({
@@ -12,25 +13,30 @@ const router = createRouter({
     {
       path: '/', // Define the default path for the main view
       name: 'main',
-      component: MainView
+      component: MainView,
     },
     {
       path: '/gallery', // Path for gallery view
       name: 'gallery',
-      component: GalleryView
+      component: GalleryView,
     },
     {
-      path: '/segmentation', // Path for gallery view
+      path: '/segmentation', // Path for segmentation view
       name: 'segmentation',
-      component: SegmentationComponent
+      component: SegmentationComponent,
     },
     {
-      path: '/effect-selection', // Path for gallery view
+      path: '/effect-selection', // Path for effect selection view
       name: 'effect-selection',
-      component: EffectSelection
+      component: EffectSelection,
     },
-  ]
-})
+    {
+      path: '/final-effects', // Path for final effects view
+      name: 'final-effects',
+      component: FinalEffects, // Add the missing route
+    },
+  ],
+});
 
 // Export the router for use in the Vue app
-export default router
+export default router;
