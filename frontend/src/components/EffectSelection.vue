@@ -20,6 +20,7 @@ const selectedEffectType = ref("first");
 const frameOffset = ref(0); //
 const frameOffsetMin = ref(0); // Minimaler Wert für den Offset
 const frameOffsetMax = ref(100); // Maximaler Wert für den Offset
+const showInfo = ref(false);
 
 watch(selectedEffectType, (newValue) => {
   if (newValue === "last") {
@@ -47,6 +48,11 @@ onMounted(async () => {
   isLoading.value = false;
 });
 
+// Function to toggle the info popup visibility
+const toggleInfo = () => {
+  showInfo.value = !showInfo.value;
+}
+
 const handleBackgroundUpload = async (event) => {
   if (isLoading.value) {
     return;
@@ -61,11 +67,11 @@ const handleBackgroundUpload = async (event) => {
       console.log("Uploading background for: " + videoId.value);
 
       const background = await axios.post(
-        `${store.apiUrl}/upload-background`,
-        backgroundFormData,
-        {
-          responseType: "blob",
-        }
+          `${store.apiUrl}/upload-background`,
+          backgroundFormData,
+          {
+            responseType: "blob",
+          }
       );
       uploadedBackground.value = URL.createObjectURL(background.data);
       store.selectedBackground = background.data;
@@ -78,7 +84,7 @@ const handleBackgroundUpload = async (event) => {
 };
 
 const openFileDialog = () =>
-  document.querySelector('input[type="file"]').click();
+      document.querySelector('input[type="file"]').click();
 
 const generateImage = async () => {
   if (isLoading.value) {
@@ -92,14 +98,14 @@ const generateImage = async () => {
     const transparencyParam = "&blur_transparency=" + blurTransparency.value;
     const skipParam = "&frame_skip=" + frameSkip.value;
     const preview_image = await axios.get(
-      `${store.apiUrl}/get-motion-blur-preview?` +
+        `${store.apiUrl}/get-motion-blur-preview?` +
         videoIdParam +
         strengthParam +
         transparencyParam +
         skipParam,
-      {
-        responseType: "blob",
-      }
+        {
+          responseType: "blob",
+        }
     );
 
     motionBlurPreview.value = URL.createObjectURL(preview_image.data);
@@ -121,26 +127,26 @@ const applyMultipleInstancesEffect = async () => {
 
   try {
     const response = await axios.get(
-      `${store.apiUrl}/effect/multiple-instances/`,
-      {
-        params: {
-          video_id: videoId.value,
-          instance_count: instanceCount.value,
-          frame_skip: frameSkip.value,
-          transparency_mode: transparencyMode.value,
-          transparency_strength: transparencyStrength.value,
-          frame_reference: selectedEffectType.value, // "first", "middle", oder "last"
-          frame_offset: frameOffset.value, // Offset wird immer übergeben
-        },
-        responseType: "blob",
-      }
+        `${store.apiUrl}/effect/multiple-instances/`,
+        {
+          params: {
+            video_id: videoId.value,
+            instance_count: instanceCount.value,
+            frame_skip: frameSkip.value,
+            transparency_mode: transparencyMode.value,
+            transparency_strength: transparencyStrength.value,
+            frame_reference: selectedEffectType.value, // "first", "middle", oder "last"
+            frame_offset: frameOffset.value, // Offset wird immer übergeben
+          },
+          responseType: "blob",
+        }
     );
 
     multipleInstancePreview.value = URL.createObjectURL(response.data);
   } catch (error) {
     console.error(
-      "Fehler beim Anwenden des Multiple Instances Effekts:",
-      error
+        "Fehler beim Anwenden des Multiple Instances Effekts:",
+        error
     );
     alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
   } finally {
@@ -149,7 +155,7 @@ const applyMultipleInstancesEffect = async () => {
 };
 
 const moveToFinalEffects = () => {
-  router.push({ path: "/final-effects" });
+  router.push({path: "/final-effects"});
 };
 </script>
 
@@ -157,6 +163,26 @@ const moveToFinalEffects = () => {
   <main>
     <v-container class="d-flex flex-column align-center justify-center segmentation-container">
       <v-card elevation="2" class="pa-4 segmentation-card-container">
+        <!-- Info Button and Popup -->
+        <div class="info-button-container" style="position: relative;">
+          <v-btn icon @click="toggleInfo" class="info-button">
+            <v-icon>mdi-information</v-icon>
+          </v-btn>
+          <v-card v-if="showInfo" class="info-popup" elevation="2">
+            <v-card-text>
+              <p>Select an effect. The motion blur uses the last available frame and shows the movement of the object
+                 seen in the video using a blur effect. It is necessary to upload a background, either use the last
+                 background frame of the video (found in the project folder) or use your own background.
+                 You cannot currently upload your own background for the Multiple Instances effect.
+                 You have the choice between three different visualisations of the instances and can use the offset
+                 slider to set where the instances can be located. You can also adjust the number of instances and the
+                 distance between them (frameskip). If you select more instances than are possible with your settings,
+                 the remaining instances will be cut off.
+                 Click on ‘generate image’ to display a preview of the image.
+                 Click on ‘continue’ to go to the last editing step. </p>
+            </v-card-text>
+         </v-card>
+        </div>
         <v-card-title class="justify-center">
           <h2>Effects</h2>
         </v-card-title>
@@ -453,4 +479,32 @@ const moveToFinalEffects = () => {
   margin-top: 20px;
   align-self: flex-end;
 }
+.info-button-container {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.info-button {
+  color: #ffffff !important;
+  background-color: #1976d2 !important;
+  z-index: 15;
+  margin-left: auto;
+}
+
+.info-popup {
+  position: absolute;
+  top: calc(100% + 8px); /* Popup unterhalb des Buttons */
+  right: 0; /* Popup an der rechten Seite des Buttons ausrichten */
+  width: 600px;
+  padding: 16px;
+  z-index: 10;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 </style>

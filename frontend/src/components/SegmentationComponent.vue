@@ -17,6 +17,7 @@ const dotY = ref("0px")
 const dotSize = ref(50)
 const maskedImage = ref(false)
 const segmentedVideo = ref(null)
+const showInfo = ref(false);
 
 onMounted(async () => {
   isLoading.value = true;
@@ -80,6 +81,11 @@ const handleDotSubmit = async () => {
   isLoading.value = false
 }
 
+// Function to toggle the info popup visibility
+const toggleInfo = () => {
+  showInfo.value = !showInfo.value;
+}
+
 const moveToSegmentationResult = async () => {
   isLoading.value = true
   try {
@@ -104,6 +110,22 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
     <v-container class="d-flex flex-column align-center justify-center segmentation-container">
       <!-- A card to contain the form and images -->
       <v-card elevation="2" class="pa-4 segmentation-card-container">
+        <div class="info-button-container">
+        <v-btn icon @click="toggleInfo" class="info-button">
+          <v-icon>mdi-information</v-icon>
+        </v-btn>
+        <v-card v-if="showInfo" class="info-popup" elevation="2">
+          <v-card-text>
+            <p>Click on the object that you want to apply an effect to. Then click on ‘set point’.
+               If you have made a mistake, you can correct it by changing the point type.
+               As soon as you are sure that you have selected the correct object, click on ‘continue’.
+               The object will now be segmented from the video, this may take some time.
+               As soon as the segmentation is complete, you can view the video with the segmentation mask.
+               If you are satisfied click ‘continue’, if not start again.
+            </p>
+          </v-card-text>
+        </v-card>
+      </div>
         <!-- Card title -->
         <v-card-title class="justify-center">
           <h2>Segmentation</h2>
@@ -220,4 +242,30 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
   align-items: center;
   border-radius: 8px;
 }
+
+.info-button-container {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.info-button {
+  color: #ffffff !important;
+  background-color: #1976d2 !important;
+  z-index: 15;
+}
+
+.info-popup {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  width: 600px;
+  padding: 16px;
+  z-index: 10;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+
 </style>

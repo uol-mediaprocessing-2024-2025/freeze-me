@@ -11,6 +11,7 @@ const previewUrl = ref(""); // URL des Bildes für die Vorschau
 const brightness = ref(100); // Prozentuale Helligkeit
 const contrast = ref(100); // Prozentualer Kontrast
 const saturation = ref(100); // Prozentuale Sättigung
+const showInfo = ref(false);
 
 onMounted(async () => {
   videoId.value = store.selectedVideoId;
@@ -71,12 +72,28 @@ const downloadImage = () => {
   link.download = `${selectedEffect}-edited-image.png`;
   link.click();
 };
+
+// Function to toggle the info popup visibility
+const toggleInfo = () => {
+  showInfo.value = !showInfo.value;
+};
 </script>
 
 <template>
   <main>
     <v-container class="d-flex flex-column align-center justify-center segmentation-container">
       <v-card elevation="2" class="pa-4 segmentation-card-container">
+        <div class="info-button-container">
+        <v-btn icon @click="toggleInfo" class="info-button">
+          <v-icon>mdi-information</v-icon>
+        </v-btn>
+        <v-card v-if="showInfo" class="info-popup" elevation="2">
+          <v-card-text>
+            <p>Select which image you want to edit.
+               Adjust the brightness, contrast and saturation and download your result. </p>
+          </v-card-text>
+        </v-card>
+        </div>
         <v-card-title class="justify-center">
           <h2>Final Effects</h2>
         </v-card-title>
@@ -273,5 +290,24 @@ const downloadImage = () => {
   max-height: 80%;
   border: 1px solid #ccc;
   border-radius: 8px;
+}
+.info-button-container {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.info-button {
+  color: #ffffff;
+  background-color: #1976d2;
+}
+
+.info-popup {
+  position: absolute;
+  top: 48px;
+  right: 16px;
+  width: 600px;
+  padding: 8px;
+  z-index: 10;
 }
 </style>
