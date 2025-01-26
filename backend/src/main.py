@@ -289,7 +289,7 @@ async def apply_final_effects(video_id: Annotated[str, Form()], brightness: Anno
                               contrast: Annotated[float, Form()], saturation: Annotated[float, Form()]):
 
     try:
-        output_folder = "output_folder_path"  # Passe dies an deinen Pfad an
+        output_folder = "output_folder_path"  # implement outoutfolder
         output_image_path = process_effect_request(video_id, brightness, contrast, saturation, output_folder)
         return FileResponse(output_image_path, media_type="image/png")
     except Exception as e:
