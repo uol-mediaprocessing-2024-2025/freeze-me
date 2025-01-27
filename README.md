@@ -32,19 +32,27 @@ The frontend lets you upload images and apply a blur effect to them.
    pip install -r requirements.txt
    ```
 4. **Install Sam2**
-   > Install Sam2 and the correct pytorch-cuda version (if used with gpu)
-   ```sh
-   pip install 'git+https://github.com/facebookresearch/sam2.git'
-   ```
+   > Setup Sam2 and the correct pytorch-cuda version (if used with gpu)
    ```sh
    conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
    ```
-   > Download a checkpoint and config from 
+   > Download a checkpoint and config from and add them to the config- and checkpoints
+   > folder inside the src folder.
    ```
    https://github.com/facebookresearch/sam2?tab=readme-ov-file#sam-21-checkpoints
    ```
+   
+5. **Setup GPU Usage**
+   > Ensure that both CUDA (12.4) and cuDNN (9.7.0) are installed and the PATH variables are set.
 
-5. **Run the backend server:**
+   > Replace the cv2-package in your conda environments <br> site-packages (<Path-To-Conda>/envs/simple-webapp/Lib/site-packages)
+   > <br> with the cv2-package in other/cv2.zip <br>
+   > <br>
+   > The zip contains a custom build OpenCV-Build with CUDA support. It is build for CUDA 12.4 and cuDNN 9.7.0. 
+   > Other (newer) versions might work as well.
+   
+
+6. **Run the backend server:**
    ```sh
    cd src
    python main.py
