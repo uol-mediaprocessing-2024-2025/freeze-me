@@ -9,6 +9,12 @@ The frontend lets you upload images and apply a blur effect to them.
 - **Python 3.10+** (for the backend) - [Download here](https://www.python.org/downloads/)
 - **Conda** (for environment management) - [Install here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/)
 
+Recommended, but optional:
+
+- **CUDA 12.4** (for GPU Usage) - [Download here](https://developer.nvidia.com/cuda-12-4-0-download-archive)
+- **cudNN 9.7.0** (for GPU Usage) - [Install here](https://developer.nvidia.com/cudnn-downloads)
+
+
 ---
 
 ## Setup Instructions
@@ -44,14 +50,7 @@ The frontend lets you upload images and apply a blur effect to them.
    
 5. **Setup GPU Usage**
    > Ensure that both CUDA (12.4) and cuDNN (9.7.0) are installed and the PATH variables are set.
-
-   > Replace the cv2-package in your conda environments <br> site-packages (<Path-To-Conda>/envs/simple-webapp/Lib/site-packages)
-   > <br> with the cv2-package in other/cv2.zip <br>
-   > <br>
-   > The zip contains a custom build OpenCV-Build with CUDA support. It is build for CUDA 12.4 and cuDNN 9.7.0. 
-   > Other (newer) versions might work as well.
    
-
 6. **Run the backend server:**
    ```sh
    cd src

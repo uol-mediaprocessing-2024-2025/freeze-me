@@ -1,4 +1,3 @@
-import io
 import os
 import traceback
 from typing import Annotated
@@ -9,7 +8,7 @@ import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
-from starlette.responses import StreamingResponse
+from timeit import default_timer as timer
 
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
@@ -22,10 +21,9 @@ from video_editing import get_masked_video
 from video_editing import cut_video
 from video_editing import get_frame
 from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image
-from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed, \
-    create_multiple_instance_effect_middle
+from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed
+from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image
 from image_editing import save_background
-from image_editing import generate_motion_blur_image
 from image_effects import process_effect_request
 
 
@@ -76,7 +74,12 @@ async def upload_background(file: UploadFile = File(...), video_id: str = Form(.
 async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_transparency: float, frame_skip: int):
     try:
         print("Generating motion blur preview with ", blur_strength, blur_transparency, frame_skip)
-        image_path = await generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip)
+        start = timer()
+        image_path = await create_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip)
+        end = timer()
+        print("--- Total Generation Time: %s seconds ---" % (end - start))
+        print("-----------------------------------------------------------")
+
         return FileResponse(image_path, media_type="image/png")
     except Exception as e:
         print(e)

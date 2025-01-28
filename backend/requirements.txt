@@ -13,3 +13,4 @@ sam2
 supervision
 uuid
 cupy
+scipy

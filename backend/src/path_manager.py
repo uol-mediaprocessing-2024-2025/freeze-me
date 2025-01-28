@@ -11,8 +11,8 @@ CUT_BACKGROUND_IMAGES_FOLDER = "temp_background"
 BACKGROUND_UPLOAD = "background.jpeg"
 MOTION_BLUR_FOLDER = "blurred-frames"
 TEMP_FILE_NAME = "temp.mp4"
-CHECKPOINT_PATH = "checkpoints"
-CONFIG_PATH = "configs"
+CHECKPOINT_PATH = "../checkpoints"
+CONFIG_PATH = "../configs"
 MULTIPLE_INSTANCES_FOLDER = "multiple_instances"
 WORKFLOW_DATA_FILE="workflow.json"
 
@@ -22,16 +22,18 @@ def get_config_path():
         print("SAM_VERSION environment variable is not set")
         print("Possible values are: large, b_plus, small, tiny")
         print("Defaulting to small")
-
+    prefix_path = Path.cwd()
+    if os.path.dirname(prefix_path).__eq__("src"):
+        prefix_path = prefix_path.parent
     match path:
         case "large":
-            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_l.yaml").absolute()
+            path = prefix_path.joinpath(CONFIG_PATH).joinpath("sam2.1_hiera_l.yaml").absolute()
         case "b_plus":
-            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_b+.yaml").absolute()
+            path = prefix_path.joinpath(CONFIG_PATH).joinpath("sam2.1_hiera_b+.yaml").absolute()
         case "tiny":
-            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_t.yaml").absolute()
+            path = prefix_path.joinpath(CONFIG_PATH).joinpath("sam2.1_hiera_t.yaml").absolute()
         case _:
-            path = Path(CONFIG_PATH).joinpath("sam2.1_hiera_s.yaml").absolute()
+            path = prefix_path.joinpath(CONFIG_PATH).joinpath("sam2.1_hiera_s.yaml").absolute()
     return path.as_posix()
 
 def get_checkpoint_path():
@@ -40,16 +42,18 @@ def get_checkpoint_path():
         print("SAM_VERSION environment variable is not set")
         print("Possible values are: large, b_plus, small, tiny")
         print("Defaulting to small")
-
+    prefix_path = Path.cwd()
+    if os.path.dirname(prefix_path).__eq__("src"):
+        prefix_path = prefix_path.parent
     match path:
         case "large":
-            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_large.pt").absolute()
+            path = prefix_path.joinpath(CHECKPOINT_PATH).joinpath("sam2.1_hiera_large.pt").absolute()
         case "b_plus":
-            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_base_plus.pt").absolute()
+            path = prefix_path.joinpath(CHECKPOINT_PATH).joinpath("sam2.1_hiera_base_plus.pt").absolute()
         case "tiny":
-            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_tiny.pt").absolute()
+            path = prefix_path.joinpath(CHECKPOINT_PATH).joinpath("sam2.1_hiera_tiny.pt").absolute()
         case _:
-            path = Path(CHECKPOINT_PATH).joinpath("sam2.1_hiera_small.pt").absolute()
+            path = prefix_path.joinpath(CHECKPOINT_PATH).joinpath("sam2.1_hiera_small.pt").absolute()
     return path.as_posix()
 
 def get_main_folder():
