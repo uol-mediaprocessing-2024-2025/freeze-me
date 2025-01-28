@@ -64,6 +64,7 @@ import shutil
 inference_state: {}
 points: []
 labels: []
+last_frame = -1
 fps = 0
 
 
@@ -74,13 +75,21 @@ async def save_video(file: UploadFile):
     video_data = io.BytesIO(await file.read())
     with open(path, "wb") as f:
         f.write(video_data.getbuffer())
+
+    image_folder = get_images_path(video_id)
+    ffmpeg.input(path).output(image_folder.__str__() + "/%05d.jpeg", start_number=0,
+                              **{'q:v': '2'}).overwrite_output().run(quiet=True)
+
     return video_id
 
 
 async def get_video_details(video_id):
     try:
         path = get_upload_path(video_id)
+        image_folder = get_images_path(video_id)
+        total_frames = len(os.listdir(image_folder))
         details = ffmpeg.probe(path.__str__(), cmd="static_ffprobe")
+        details["total_frames"] = total_frames
         global fps
         video_stream = None
         for stream in details["streams"]:
@@ -100,17 +109,13 @@ async def get_video_details(video_id):
         return ""
 
 
-async def get_first_frame(video_id):
+async def initialize_segmentation(video_id):
     try:
         global inference_state, points, labels
         image_folder = get_images_path(video_id)
         points = []
         labels = []
-        path = get_upload_path(video_id)
-        ffmpeg.input(path).output(image_folder.__str__() + "/%05d.jpeg", start_number=0,
-                                  **{'q:v': '2'}).overwrite_output().run(quiet=True)
         inference_state = predictor.init_state(video_path=image_folder.__str__())
-        return get_frame_path(video_id, 0)
     except Exception as e:
         print(e)
         print(e.__traceback__)
@@ -125,16 +130,19 @@ async def get_frame(video_id, frame_id):
         print(traceback.format_exc())
 
 
-async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type):
+async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num):
     try:
-        global inference_state, points, labels
+        global inference_state, points, labels, last_frame
+        if last_frame != frame_num:
+            points = []
+            labels = []
         points.append([point_x, point_y])
         labels.append(point_type)
         output_path = get_preview_mask_frames_folder_path(video_id)
         with sv.ImageSink(target_dir_path=output_path.__str__()) as sink:
             _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
                 inference_state=inference_state,
-                frame_idx=0,
+                frame_idx=frame_num,
                 obj_id=1,
                 points=points,
                 labels=labels,
@@ -147,7 +155,7 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type):
                 mask=masks,
                 tracker_id=np.array(out_obj_ids)
             )
-            frame_path = get_frame_path(video_id, 0)
+            frame_path = get_frame_path(video_id, frame_num)
             frame = cv2.imread(frame_path.__str__())
             frame = mask_annotator.annotate(frame, detections)
             sink.save_image(frame, get_preview_mask_frame_name(video_id, len(points)))
@@ -257,7 +265,11 @@ async def cut_video(video_id: str, start_time: float, end_time: float):
             temp_video_path.unlink()  # Temporäre Datei löschen
         else:
             raise Exception(f"Das temporäre Video {temp_video_path} wurde nicht erfolgreich erstellt.")
-
+        image_folder = get_images_path(video_id)
+        for f in os.listdir(image_folder):
+            os.remove(os.path.join(image_folder, f))
+        ffmpeg.input(original_video_path).output(image_folder.__str__() + "/%05d.jpeg", start_number=0,
+                                  **{'q:v': '2'}).overwrite_output().run(quiet=True)
         return new_video_file_name
 
     except Exception as e:

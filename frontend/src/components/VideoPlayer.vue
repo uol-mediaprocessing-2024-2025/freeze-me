@@ -79,6 +79,7 @@ const updateVideoDetails = async () => {
         const information = details_response.data;
         console.log(information);
 
+        store.totalFrames = information.total_frames
         const streamCount = information.format.nb_streams;
         let videoStream;
         for (let i = 0; i < streamCount; i++) {

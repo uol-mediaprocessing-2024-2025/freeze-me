@@ -7,6 +7,8 @@ import router from "@/router/index.js";
 const isLoading = ref(false);
 const displayedFrame = ref(null);
 const videoId = ref(null)
+const frameNum = ref(0)
+const totalFrames = ref(0)
 const pointType = ref("Additive")
 const selectedX = ref(null)
 const selectedY = ref(null)
@@ -27,12 +29,15 @@ onMounted(async () => {
       router.push({path: '/'})
       return;
     }
+    await axios.get(`${store.apiUrl}/initialize-segmentation?video_id=` + videoId.value)
+    const response = await axios.get(`${store.apiUrl}/total-frame-count?video_id=` + videoId.value, {
+      responseType: "json"
+    })
+
+    frameNum.value = response.data
+    totalFrames.value = response.data
     if (store.segmentedFrame == null) {
-      const first_frame = await axios.get(`${store.apiUrl}/get-first-frame?video_id=` + videoId.value, {
-        responseType: 'blob'
-      });
-      displayedFrame.value = URL.createObjectURL(first_frame.data);
-      store.segmentedFrame = displayedFrame.value;
+      await loadFrame()
     } else {
       displayedFrame.value = store.segmentedFrame
     }
@@ -55,6 +60,14 @@ const handleImageClick = (event) => {
   console.log("X: ", calcX, "Y: ", calcY)
 }
 
+const loadFrame = async () => {
+  const first_frame = await axios.get(`${store.apiUrl}/get-frame?video_id=` + videoId.value + '&frame_num=' + (frameNum.value - 1), {
+    responseType: 'blob'
+  });
+  displayedFrame.value = URL.createObjectURL(first_frame.data);
+  store.segmentedFrame = displayedFrame.value;
+}
+
 const handleDotSubmit = async () => {
   selectedX.value = null
   selectedY.value = null
@@ -65,6 +78,7 @@ const handleDotSubmit = async () => {
     pointFormData.append('point_x', estimatedX.value);
     pointFormData.append('point_y', estimatedY.value);
     pointFormData.append('point_type', pointType.value === "Additive" ? 1 : 0);
+    pointFormData.append('frame_num', frameNum.value);
     // Make a POST request to the backend API to apply the blur effect
     const frame_response = await axios.post(`${store.apiUrl}/add-point`, pointFormData, {
       responseType: 'blob'
@@ -111,21 +125,21 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
       <!-- A card to contain the form and images -->
       <v-card elevation="2" class="pa-4 segmentation-card-container">
         <div class="info-button-container">
-        <v-btn icon @click="toggleInfo" class="info-button">
-          <v-icon>mdi-information</v-icon>
-        </v-btn>
-        <v-card v-if="showInfo" class="info-popup" elevation="2">
-          <v-card-text>
-            <p>Click on the object that you want to apply an effect to. Then click on ‘set point’.
-               If you have made a mistake, you can correct it by changing the point type.
-               As soon as you are sure that you have selected the correct object, click on ‘continue’.
-               The object will now be segmented from the video, this may take some time.
-               As soon as the segmentation is complete, you can view the video with the segmentation mask.
-               If you are satisfied click ‘continue’, if not start again.
-            </p>
-          </v-card-text>
-        </v-card>
-      </div>
+          <v-btn icon @click="toggleInfo" class="info-button">
+            <v-icon>mdi-information</v-icon>
+          </v-btn>
+          <v-card v-if="showInfo" class="info-popup" elevation="2">
+            <v-card-text>
+              <p>Click on the object that you want to apply an effect to. Then click on ‘set point’.
+                 If you have made a mistake, you can correct it by changing the point type.
+                 As soon as you are sure that you have selected the correct object, click on ‘continue’.
+                 The object will now be segmented from the video, this may take some time.
+                 As soon as the segmentation is complete, you can view the video with the segmentation mask.
+                 If you are satisfied click ‘continue’, if not start again.
+              </p>
+            </v-card-text>
+          </v-card>
+        </div>
         <!-- Card title -->
         <v-card-title class="justify-center">
           <h2>Segmentation</h2>
@@ -136,6 +150,18 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
             <img v-if="selectedX && selectedY" :src="pointType === 'Additive' ? 'src/assets/posDot.svg' : 'src/assets/negDot.svg'" class="select-dot" :width="dotSize" :height="dotSize"/>
           </div>
           <div v-if="!segmentedVideo" class="controls">
+            <v-slider
+              v-model="frameNum"
+              show-ticks="always"
+              tick-size="5"
+              thumb-label
+              :max="totalFrames"
+              :min="1"
+              :step="1"
+            ></v-slider>
+            <v-btn class="submit-button" @click="loadFrame">
+              Change Frame
+            </v-btn>
             <v-switch v-model="pointType" :label="`PointType: ${pointType}`" false-value="Subtractive" true-value="Additive" class="point-selection" hide-details />
             <v-btn class="submit-button" :disabled="!selectedX && !selectedY" @click="handleDotSubmit">
               Set Point

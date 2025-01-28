@@ -10,6 +10,7 @@ export const store = reactive({
     segmentedFrame: null,
     cutVideoFile: null,
     selectedBackground: null,
+    totalFrames: 0,
     steps: {
         videoEditing: false,
         segmentation: false,

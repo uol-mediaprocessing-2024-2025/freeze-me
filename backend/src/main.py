@@ -15,7 +15,7 @@ os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 from video_editing import get_video_details
 from video_editing import save_video
-from video_editing import get_first_frame
+from video_editing import initialize_segmentation
 from video_editing import add_new_point_to_segmentation
 from video_editing import get_masked_video
 from video_editing import cut_video
@@ -102,12 +102,23 @@ async def video_details(video_id: str):
             content={"message": "Failed to get video details", "error": str(e)},
         )
 
-@app.get("/get-first-frame")
+@app.get("/total-frame-count")
+async def total_frame_count(video_id: str):
+    try:
+        details = await get_video_details(video_id)
+        return JSONResponse(status_code=200, content=details["total_frames"])
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to get video details", "error": str(e)},
+        )
+
+@app.get("/initialize-segmentation")
 async def get_first_frame_of_video(video_id: str):
     try:
-        first_frame_path = await get_first_frame(video_id)
-        print("Got first frame: " + first_frame_path.__str__())
-        return FileResponse(first_frame_path, media_type="image/jpeg")
+        await initialize_segmentation(video_id)
+        print("Successfully initialized segmentation")
+        return JSONResponse(status_code=200, content="")
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -115,9 +126,9 @@ async def get_first_frame_of_video(video_id: str):
         )
 
 @app.post("/add-point")
-async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()], point_y: Annotated[float, Form()], point_type: Annotated[int, Form()]):
+async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()], point_y: Annotated[float, Form()], point_type: Annotated[int, Form()], frame_num: Annotated[int, Form()]):
     try:
-        masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type)
+        masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num)
         return FileResponse(masked_frame, media_type="image/png")
     except Exception as e:
         return JSONResponse(
@@ -199,10 +210,10 @@ async def get_project_progress(video_id: str):
         )
 
 @app.get("/get-frame")
-async def get_first_frame_of_video(video_id: str):
+async def get_first_frame_of_video(video_id: str, frame_num: int):
     try:
-        first_frame_path = await get_frame(video_id, 0)
-        print("Got first frame: " + first_frame_path.__str__())
+        first_frame_path = await get_frame(video_id, frame_num)
+        print("Got frame: " + first_frame_path.__str__())
         return FileResponse(first_frame_path, media_type="image/jpeg")
     except Exception as e:
         return JSONResponse(

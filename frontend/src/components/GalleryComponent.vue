@@ -15,7 +15,7 @@ onMounted(async () => {
   for (let i = 0; i < video_ids.length; i++) {
     const id = video_ids[i];
     const video_data = (await axios.get(`${store.apiUrl}/project-data?video_id=` + id)).data
-    const thumbnail_data = await axios.get(`${store.apiUrl}/get-frame?video_id=` + id, {
+    const thumbnail_data = await axios.get(`${store.apiUrl}/get-frame?video_id=` + id + '&frame_num=0', {
           responseType: 'blob'
         })
     let thumbnail = null
