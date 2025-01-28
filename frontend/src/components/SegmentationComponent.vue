@@ -3,6 +3,7 @@ import {ref, onMounted} from "vue";
 import {store} from "../store.js";
 import axios from "axios";
 import router from "@/router/index.js";
+import TimelineComponent from "@/components/TimelineComponent.vue";
 
 const isLoading = ref(false);
 const displayedFrame = ref(null);
@@ -123,6 +124,7 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
   <main>
     <v-container class="d-flex flex-column align-center justify-center segmentation-container">
       <!-- A card to contain the form and images -->
+      <TimelineComponent/>
       <v-card elevation="2" class="pa-4 segmentation-card-container">
         <div class="info-button-container">
           <v-btn icon @click="toggleInfo" class="info-button">
@@ -158,6 +160,7 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
               :max="totalFrames"
               :min="1"
               :step="1"
+              class="pr-5"
             ></v-slider>
             <v-btn class="submit-button" @click="loadFrame">
               Change Frame

@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from "vue";
 import { store } from "@/store.js";
 import router from "@/router/index.js";
 import axios from "axios";
+import TimelineComponent from "@/components/TimelineComponent.vue";
 
 const isLoading = ref(false);
 const videoId = ref(null);
@@ -162,6 +163,7 @@ const moveToFinalEffects = () => {
 <template>
   <main>
     <v-container class="d-flex flex-column align-center justify-center segmentation-container">
+      <TimelineComponent/>
       <v-card elevation="2" class="pa-4 segmentation-card-container">
         <!-- Info Button and Popup -->
         <div class="info-button-container" style="position: relative;">

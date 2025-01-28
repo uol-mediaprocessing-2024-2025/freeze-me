@@ -93,7 +93,6 @@ async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_tra
 async def video_details(video_id: str):
     try:
         print("Getting details from: " + video_id)
-        set_current_step(video_id, Step.SEGMENTATION)
         details = await get_video_details(video_id)
         return JSONResponse(status_code=200, content=details)
     except Exception as e:
@@ -118,6 +117,7 @@ async def get_first_frame_of_video(video_id: str):
     try:
         await initialize_segmentation(video_id)
         print("Successfully initialized segmentation")
+        set_current_step(video_id, Step.SEGMENTATION)
         return JSONResponse(status_code=200, content="")
     except Exception as e:
         return JSONResponse(
@@ -281,6 +281,7 @@ async def multiple_instance_effect(
 async def get_final_effects_preview(video_id: str, effect_type: str):
 
     try:
+        set_current_step(video_id, Step.AFTER_EFFECT)
         if effect_type == "motion_blur":
             image_path = get_motion_blur_image(video_id, "motion_blur.png")
         elif effect_type == "multiple_instances":
@@ -303,6 +304,7 @@ async def apply_final_effects(video_id: Annotated[str, Form()], brightness: Anno
                               contrast: Annotated[float, Form()], saturation: Annotated[float, Form()]):
 
     try:
+        set_current_step(video_id, Step.AFTER_EFFECT)
         output_folder = "output_folder_path"  # implement outoutfolder
         output_image_path = process_effect_request(video_id, brightness, contrast, saturation, output_folder)
         return FileResponse(output_image_path, media_type="image/png")
