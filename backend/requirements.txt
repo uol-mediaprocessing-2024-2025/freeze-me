@@ -12,5 +12,5 @@ numpy
 sam2
 supervision
 uuid
-cupy
+cupy-cuda12x
 scipy
