@@ -1,10 +1,11 @@
 <script setup>
-import { ref } from "vue";
+import {onMounted, ref} from "vue";
 import router from "@/router/index.js";
 import { store } from "../store.js";
 import axios from "axios";
 
 const isLoading = ref(false);  // Boolean to show a loading spinner while the image is being processed
+const loadingText = ref("");  // Boolean to show a loading spinner while the image is being processed
 const fileBlob = ref(null);
 const videoId = ref(null);
 const displayedVideo = ref(null);
@@ -24,6 +25,11 @@ const resetVideo = () => {
     displayedVideo.value = null;
     store.selectedVideo = null;
     store.selectedVideoId = null;
+    store.steps.videoEditing = false;
+    store.steps.segmentation = false;
+    store.steps.background = false;
+    store.steps.mainEffect = false;
+    store.steps.afterEffect = false;
     framerate.value = 0;
     height.value = 0;
     width.value = 0;
@@ -32,6 +38,8 @@ const resetVideo = () => {
     duration.value = 0;
     document.querySelector('input[type="file"]').value = '';
 };
+
+onMounted(() => resetVideo())
 
 // Handle video upload
 const handleVideoUpload = async (event) => {
@@ -46,6 +54,7 @@ const handleVideoUpload = async (event) => {
     }
 
     isLoading.value = true;
+    loadingText.value = "Uploading and processing video...";
     try {
         const videoFormData = new FormData();
         videoFormData.append('file', fileBlob.value);
@@ -68,6 +77,7 @@ const handleVideoUpload = async (event) => {
         console.error('Failed to get details:', error);
     } finally {
         isLoading.value = false;
+        loadingText.value = "";
     }
 };
 
@@ -113,6 +123,7 @@ const moveToSegmentation = () => router.push({ path: 'segmentation' });
 // API call to cut the video
 const cutVideo = async () => {
     isLoading.value = true;
+    loadingText.value = "Cutting video...";
     try {
         const cutFormData = new FormData();
         cutFormData.append('video_id', videoId.value);
@@ -137,6 +148,7 @@ const cutVideo = async () => {
         console.error("Error cutting the video:", error);
     } finally {
         isLoading.value = false;
+        loadingText.value = "";
     }
 };
 </script>
@@ -160,6 +172,7 @@ const cutVideo = async () => {
     <!-- Loading overlay with centered spinner -->
     <div v-if="isLoading" class="loading-overlay">
       <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
+      <v-label>{{loadingText}}</v-label>
     </div>
     <div class="d-flex flex-row align-self-start">
       <div class="video-details">

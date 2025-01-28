@@ -6,6 +6,7 @@ import router from "@/router/index.js";
 import TimelineComponent from "@/components/TimelineComponent.vue";
 
 const isLoading = ref(false);
+const loadingText = ref("");
 const displayedFrame = ref(null);
 const videoId = ref(null)
 const frameNum = ref(0)
@@ -24,6 +25,7 @@ const showInfo = ref(false);
 
 onMounted(async () => {
   isLoading.value = true;
+  loadingText.value = "Preprocessing video...";
   try {
     videoId.value = store.selectedVideoId;
     if (videoId.value == null) {
@@ -31,6 +33,7 @@ onMounted(async () => {
       return;
     }
     await axios.get(`${store.apiUrl}/initialize-segmentation?video_id=` + videoId.value)
+    loadingText.value = "Getting frame...";
     const response = await axios.get(`${store.apiUrl}/total-frame-count?video_id=` + videoId.value, {
       responseType: "json"
     })
@@ -46,6 +49,7 @@ onMounted(async () => {
     console.error("Failed to load first frame: ", e)
   }
   isLoading.value = false;
+  loadingText.value = "";
 })
 
 const handleImageClick = (event) => {
@@ -73,6 +77,7 @@ const handleDotSubmit = async () => {
   selectedX.value = null
   selectedY.value = null
   isLoading.value = true
+  loadingText.value = "Segmenting frame...";
   try {
     const pointFormData = new FormData();
     pointFormData.append('video_id', videoId.value);
@@ -94,6 +99,7 @@ const handleDotSubmit = async () => {
     console.error(e.response.data)
   }
   isLoading.value = false
+  loadingText.value = "";
 }
 
 // Function to toggle the info popup visibility
@@ -103,6 +109,7 @@ const toggleInfo = () => {
 
 const moveToSegmentationResult = async () => {
   isLoading.value = true
+  loadingText.value = "Segmenting video...";
   try {
     const resultVideo = await axios.get(`${store.apiUrl}/get-segmentation-result?video_id=` + videoId.value, {
       responseType: 'blob'
@@ -114,6 +121,7 @@ const moveToSegmentationResult = async () => {
     console.error("Failed to load result: ", e)
   }
   isLoading.value = false
+  loadingText.value = "";
 }
 
 const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
@@ -176,6 +184,7 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
           <!-- Loading overlay with centered spinner -->
           <div v-if="isLoading" class="loading-overlay">
             <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
+            <v-label>{{loadingText}}</v-label>
           </div>
         </div>
         <div v-if="segmentedVideo" class="frame-wrapper">

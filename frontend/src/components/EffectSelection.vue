@@ -6,6 +6,8 @@ import axios from "axios";
 import TimelineComponent from "@/components/TimelineComponent.vue";
 
 const isLoading = ref(false);
+const loadingText = ref("")
+
 const videoId = ref(null);
 const uploadedBackground = ref(null);
 const selectedEffect = ref("blur"); // Standardmäßig Blur-Effekt auswählen
@@ -92,6 +94,7 @@ const generateImage = async () => {
     return;
   }
   isLoading.value = true;
+  loadingText.value = "Generating Motion Blur Image..."
 
   try {
     const videoIdParam = "video_id=" + videoId.value;
@@ -116,6 +119,7 @@ const generateImage = async () => {
   }
 
   isLoading.value = false;
+  loadingText.value = ""
 };
 
 const applyMultipleInstancesEffect = async () => {
@@ -125,6 +129,7 @@ const applyMultipleInstancesEffect = async () => {
   }
 
   isLoading.value = true;
+  loadingText.value = "Generating Multiple Instances Effect..."
 
   try {
     const response = await axios.get(
@@ -152,6 +157,7 @@ const applyMultipleInstancesEffect = async () => {
     alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
   } finally {
     isLoading.value = false;
+    loadingText.value = ""
   }
 };
 
@@ -278,6 +284,11 @@ const moveToFinalEffects = () => {
                     alt="preview of generated image"
                     class="image-preview"
                   />
+                  <!-- Loading overlay with centered spinner -->
+                  <div v-if="isLoading" class="loading-overlay">
+                    <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
+                    <v-label>{{loadingText}}</v-label>
+                  </div>
                   <p class="pt-5">
                     Press "Generate Image" to see a preview of the image
                   </p>
@@ -397,6 +408,11 @@ const moveToFinalEffects = () => {
                       alt="preview of generated image"
                       class="image-preview"
                     />
+                    <!-- Loading overlay with centered spinner -->
+                    <div v-if="isLoading" class="loading-overlay">
+                      <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
+                      <v-label>{{loadingText}}</v-label>
+                    </div>
                     <p class="pt-5">
                       Press "Generate Image" to see a preview of the image
                     </p>
@@ -468,6 +484,19 @@ const moveToFinalEffects = () => {
   flex-direction: column;
   justify-content: space-between;
   position: relative;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
 }
 
 .image-preview {
