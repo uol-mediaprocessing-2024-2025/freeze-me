@@ -43,7 +43,9 @@ async def save_background(file: UploadFile, video_id):
 
     # Convert to png
     final_image_path = get_background_image(video_id, "background.png")
-    image = cv2.imread(path)
+    image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    if len(image.shape)==3:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
     cv2.imwrite(final_image_path, image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
     path.unlink()
@@ -51,22 +53,18 @@ async def save_background(file: UploadFile, video_id):
 
 
 async def create_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip):
-    print(0)
     device = torch.device("cuda" if torch.cuda.is_available() and cupy.cuda.is_available() else "cpu")
     motion_blur_data = get_motion_blur_data(video_id)
-    print(1)
     if not motion_blur_data:
         # If data doesn't exist, this is the first time generating motion blur image
         generate_blur = True
         motion_blur_data = [0, 0, 0]
     else:
         generate_blur = motion_blur_data[0] != blur_strength or motion_blur_data[1] != blur_transparency or motion_blur_data[2] != frame_skip
-    print(2)
+    device = "cpu"
     if device.__eq__("cuda"):
-        print(3)
         path = gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, generate_blur)
     else:
-        print(4)
         path = generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip)
 
     # update motion blur data
@@ -353,7 +351,6 @@ def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame
     _, prev_center_x, _, _, prev_center_y, _ = get_max_min_center_of_object(prev_frame)
     base_image = np.zeros_like(prev_frame)
 
-    print(7)
     image_path = get_motion_blur_image(video_id, "motion_blur.png")
     cv2.imwrite(image_path, base_image)
     final_image = Image.open(image_path)

@@ -133,11 +133,14 @@ async def get_frame(video_id, frame_id):
 async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num):
     try:
         global inference_state, points, labels, last_frame
+        print(last_frame, frame_num)
         if last_frame != frame_num:
             points = []
             labels = []
+            last_frame = frame_num
         points.append([point_x, point_y])
         labels.append(point_type)
+        print(points, labels)
         output_path = get_preview_mask_frames_folder_path(video_id)
         with sv.ImageSink(target_dir_path=output_path.__str__()) as sink:
             _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
