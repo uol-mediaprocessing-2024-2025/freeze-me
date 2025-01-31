@@ -285,24 +285,30 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
   position: absolute;
   top: 16px;
   right: 16px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-direction: column;
+  z-index: 15;
 }
 
 .info-button {
   color: #ffffff !important;
   background-color: #1976d2 !important;
-  z-index: 15;
+  z-index: 20;
+  margin-left: auto;
 }
 
 .info-popup {
-  position: fixed;
-  top: 64px;
+  position: absolute;
+  top: -5px;
   right: 16px;
   width: 600px;
   padding: 16px;
-  z-index: 10;
+  z-index: 19;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 
