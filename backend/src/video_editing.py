@@ -29,6 +29,8 @@ from path_manager import get_masked_video_path
 from path_manager import get_preview_mask_frames_folder_path
 from path_manager import get_preview_mask_frame_name
 
+from image_editing import write_images
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("PyTorch version:", torch.__version__)
@@ -178,6 +180,10 @@ async def get_masked_video(video_id):
         video_path = get_upload_path(video_id)
         video_info = sv.VideoInfo.from_video_path(video_path.__str__())
         frames_paths = sorted(sv.list_files_with_extensions(directory=image_path.__str__(), extensions=["jpeg"]))
+        background_paths = []
+        background_frames = []
+        foreground_paths = []
+        foreground_frames = []
         # run propagation throughout the video and collect the results in a dict
         temp_file = get_temp_file_path(video_id)
         with sv.VideoSink(temp_file.__str__(), video_info=video_info) as sink:
@@ -191,23 +197,26 @@ async def get_masked_video(video_id):
                     mask=masks,
                     tracker_id=np.array(out_obj_ids)
                 )
+                base_path = Path(os.path.basename(frames_paths[out_frame_idx])).stem
+
                 # Create foreground cut frames
                 transparent_foreground = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
                 transparent_foreground[:, :, 3] = masks.astype(np.uint8) * 255
-                cut_frame_path = get_foreground_temp_image_folder(video_id).joinpath(
-                    Path(os.path.basename(frames_paths[out_frame_idx])).stem + ".png")
-                cv2.imwrite(cut_frame_path, transparent_foreground)
+                foreground_paths.append(get_foreground_temp_image_folder(video_id).joinpath(base_path + ".png"))
+                foreground_frames.append(transparent_foreground)
 
                 # Create background cut frames
                 transparent_background = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
                 transparent_background[:, :, 3] = ((masks.astype(np.uint8) + 1) % 2) * 255
-                cut_frame_path = get_background_temp_image_folder(video_id).joinpath(
-                    Path(os.path.basename(frames_paths[out_frame_idx])).stem + ".png")
-                cv2.imwrite(cut_frame_path, transparent_background)
+                background_paths.append(get_background_temp_image_folder(video_id).joinpath(base_path + ".png"))
+                background_frames.append(transparent_background)
 
                 # Create masked frames
                 frame = mask_annotator.annotate(frame, detections)
                 sink.write_frame(frame)
+
+        write_images(foreground_paths, foreground_frames)
+        write_images(background_paths, background_frames)
         (ffmpeg
          .input(temp_file.__str__())
          .output(
