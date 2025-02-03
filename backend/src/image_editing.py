@@ -1,19 +1,22 @@
+import functools
 import io
 import os
+from concurrent.futures.thread import ThreadPoolExecutor
 from pathlib import Path
 from timeit import default_timer as timer
 
 import cupy
 import cupyx
-from cupyx.scipy import ndimage
 import cv2
+import matplotlib.pyplot as plt
+import numpy
 import numpy as np
 import scipy
 import supervision as sv
 import torch
 from PIL import Image
+from cupyx.scipy import ndimage
 from fastapi import UploadFile
-import matplotlib.pyplot as plt
 
 from path_manager import get_background_image
 from path_manager import get_background_temp_image_folder
@@ -21,10 +24,6 @@ from path_manager import get_foreground_temp_image_folder
 from path_manager import get_motion_blur_folder
 from path_manager import get_motion_blur_image
 from project_data import set_motion_blur_metadata, get_motion_blur_data
-
-last_strength = -1
-last_transparency = -1
-last_frame_skip = -1
 
 max_kernel_size = 60
 min_movement = 1
@@ -34,6 +33,8 @@ angle_range = 10
 kernel_list = np.zeros((max_movement, np.floor(180 / angle_range).astype(int)), dtype='object')
 kernel_list[:, :] = None
 
+def get_device():
+    return torch.device("cuda" if torch.cuda.is_available() and cupy.cuda.is_available() else "cpu")
 
 async def save_background(file: UploadFile, video_id):
     path = get_background_image(video_id, "temp_background" + Path(file.filename).suffix)
@@ -41,10 +42,10 @@ async def save_background(file: UploadFile, video_id):
     with open(path, "wb") as f:
         f.write(image_data.getbuffer())
 
-    # Convert to png
+    # Convert to rgba-png
     final_image_path = get_background_image(video_id, "background.png")
     image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-    if len(image.shape)==3:
+    if len(image.shape) == 3:
         image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
     cv2.imwrite(final_image_path, image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
@@ -53,15 +54,15 @@ async def save_background(file: UploadFile, video_id):
 
 
 async def create_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip):
-    device = torch.device("cuda" if torch.cuda.is_available() and cupy.cuda.is_available() else "cpu")
+    device = get_device()
     motion_blur_data = get_motion_blur_data(video_id)
     if not motion_blur_data:
         # If data doesn't exist, this is the first time generating motion blur image
         generate_blur = True
         motion_blur_data = [0, 0, 0]
     else:
-        generate_blur = motion_blur_data[0] != blur_strength or motion_blur_data[1] != blur_transparency or motion_blur_data[2] != frame_skip
-    device = "cpu"
+        generate_blur = motion_blur_data[0] != blur_strength or motion_blur_data[1] != blur_transparency or \
+                        motion_blur_data[2] != frame_skip
     if device.__eq__("cuda"):
         path = gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, generate_blur)
     else:
@@ -85,15 +86,17 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
         frame_path = get_foreground_temp_image_folder(video_id).__str__()
     else:
         frame_path = get_motion_blur_folder(video_id).__str__()
-    frames_paths = sorted(sv.list_files_with_extensions(directory=frame_path,extensions=["png"]))
-    used_frames = []
+    frames_paths = sorted(sv.list_files_with_extensions(directory=frame_path, extensions=["png"]))
+    used_frame_paths = []
     load_start = timer()
     for i in range(0, len(frames_paths), 1 + frame_skip):
-        used_frames.append(cv2.imread(frames_paths[i].__str__(), cv2.IMREAD_UNCHANGED))
+        used_frame_paths.append(frames_paths[i].__str__())
+    used_frames = read_images(used_frame_paths)
 
     load_end = timer()
     print("--- Loading: %s seconds ---" % (load_end - load_start))
     print("---------------------")
+    print("Loaded: " + str(len(used_frames)) + " frames.")
 
     # Calculate how many images can be in a batch for the gpu
     mem_info = cupy.cuda.Device(0).mem_info
@@ -131,46 +134,58 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
         # generate blur if needed
         start = timer()
         if generate_blur:
-            blurred_batch_gpu = []
-            centers = []
-            rios = []
             # calculate necessary data
-            for frame in batch_gpu:
-                min_x, center_x, max_x, min_y, center_y, max_y = get_max_min_center_of_object_gpu(frame)
-                centers.append([center_x, center_y])
-                rios.append([min_x, min_y, max_x, max_y])
+            with ThreadPoolExecutor() as executor:
+                streams = [cupy.cuda.Stream() for _ in batch_gpu]
+                rois = list(executor.map(get_roi_gpu, batch_gpu, streams))
+                print("finished rois")
+                centers = list(executor.map(get_center_gpu, rois, streams))
+                print("finished centers")
+                deltas = list(executor.map(get_delta_gpu, centers[:-1], centers[1:], streams[:-1]))
+                print("finished deltas")
+                angles = list(executor.map(get_angle_gpu, deltas, streams[:-1]))
+                print("finished angles")
+                magnitudes = list(executor.map(get_magnitude_gpu, deltas, rois[:-1], streams[:-1]))
+                print("finished magnitudes")
+                [stream.synchronize() for stream in streams]
+                del streams
             prep_time = timer()
             print("--- Preparing: %s seconds ---" % (prep_time - start))
             print("---------------------")
-            for b in range(0, len(batch_gpu)):
-                # calculate angle and magnitude for all but the last frame
-                if b < len(batch_gpu) - 1:
-                    delta_x = centers[b + 1][0] - centers[b][0]
-                    delta_y = centers[b + 1][1] - centers[b][1]
-                    angle = (cupy.degrees(cupy.arctan2(delta_x, delta_y)) + 360 + 180) % 360
-                    size = cupy.sqrt((rios[b][2] - rios[b][0]) ** 2 + (rios[b][3] - rios[b][1]) ** 2)
-                    distance = cupy.sqrt(delta_x ** 2 + delta_y ** 2)
-                    magnitude = float(distance / size) + 1
-                    blurred_batch_gpu.append(gpu_blur_image(batch_gpu[b], blur_strength, blur_transparency, frame_skip,
-                                                          angle, magnitude, rios[b], centers[b], False))
-                else:
-                    blurred_batch_gpu.append(batch_gpu[b])
+
+            angles = cupy.round(angles, 1)
+            print("magnitude: ", cupy.array(magnitudes[0:10]))
+            # angles = average_out_angle_gpu(angles)
+            with ThreadPoolExecutor() as executor:
+                streams = [cupy.cuda.Stream() for _ in batch_gpu[:-1]]
+                gpu_blur_image_with_defaults = functools.partial(
+                    gpu_blur_image,
+                    blur_strength=blur_strength,
+                    blur_transparency=blur_transparency,
+                    frame_skip=frame_skip,
+                    show=False
+                )
+                blurred_batch_gpu = list(executor.map(gpu_blur_image_with_defaults, batch_gpu[:-1], angles, magnitudes, rois[:-1], centers[:-1], streams))
+                [stream.synchronize() for stream in streams]
+                del streams
             blur_time = timer()
             print("--- Blurring: %s seconds ---" % (blur_time - prep_time))
             print("---------------------")
+
             # save blurred frames
             image_num = 0
+            blurred_paths = []
             for b in range(i, batch_size, 1 + frame_skip):
                 frame_name = str(b).zfill(5) + ".png"
-                blur_path = get_motion_blur_folder(video_id).joinpath(frame_name).__str__()
-                cv2.imwrite(blur_path, blurred_batch_gpu[image_num].get())
+                blurred_paths.append(get_motion_blur_folder(video_id).joinpath(frame_name).__str__())
                 image_num += 1
+            write_images(blurred_paths, blurred_batch_gpu)
+            blurred_batch_gpu.append(batch_gpu[-1])
             save_time = timer()
             print("--- Saving: %s seconds ---" % (save_time - blur_time))
             print("---------------------")
         else:
             blurred_batch_gpu = batch_gpu
-        # composite new image
         comp_start = timer()
         for j in range(0, len(batch_gpu)):
             resulting_image_gpu = alpha_composite_gpu(blurred_batch_gpu[j], resulting_image_gpu)
@@ -181,6 +196,7 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
     # save and return
     resulting_image = cupy.asnumpy(resulting_image_gpu)
     cv2.imwrite(result_path.__str__(), resulting_image)
+    cupy.get_default_memory_pool().free_all_blocks()
     return result_path
 
 
@@ -188,103 +204,108 @@ def cpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
     return Path(get_motion_blur_image(video_id, "motion_blur.png"))
 
 
-def gpu_blur_image(image, blur_strength, blur_transparency, frame_skip, angle, magnitude, rios, center, show):
-    # create kernel based on blur_strength, magnitude and frame_skip
-    kernel_size = int(magnitude * 2 + blur_strength * 3 + frame_skip * 2)
-    kernel = cupy.zeros((1, kernel_size), dtype=cupy.float32)
-    kernel[0] = 1.0 / kernel_size
+def gpu_blur_image(image, angle, magnitude, rois, center, stream, blur_strength, blur_transparency, frame_skip, show):
+    with stream:
+        # create kernel based on blur_strength, magnitude and frame_skip
+        kernel_size = int(magnitude * 15 + blur_strength * 5 + frame_skip * 5)
+        kernel = cupy.zeros((1, kernel_size), dtype=cupy.float32)
+        kernel[0] = 1.0 / kernel_size
 
-    if show:
-        print(kernel_size)
-        print(kernel)
+        # if show:
+        #     print(kernel_size)
+        #     print(kernel[0][0])
+        #     print(angle, magnitude, rois, center)
 
-    # Crop ROI
-    cropped = image[rios[1]:rios[3], rios[0]:rios[2]]
-    center_y = center[1]
-    center_x = center[0]
+        # Crop ROI
+        cropped = image[rois[1]:rois[3], rois[0]:rois[2]]
+        center_y = center[1]
+        center_x = center[0]
 
-    if show:
-        show_image = cupy.asnumpy(cropped)
-        plt.imshow(show_image)
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        plt.show()
+        if show:
+            show_image = cupy.asnumpy(cropped)
+            plt.imshow(show_image)
+            ax = plt.gca()
+            ax.set_facecolor("black")
+            plt.show()
 
-    # Rotate ROI
-    rotated = cupy.asarray(scipy.ndimage.rotate(cropped.get(), angle.get(), reshape=True, mode='constant', cval=0))
-    if show:
-        show_image = cupy.asnumpy(rotated)
-        plt.imshow(show_image)
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        plt.show()
+        # Rotate ROI
+        rotated = cupy.asarray(scipy.ndimage.rotate(cropped.get(), angle.get(), reshape=True, mode='constant', cval=0))
+        if show:
+            show_image = cupy.asnumpy(rotated)
+            plt.imshow(show_image)
+            ax = plt.gca()
+            ax.set_facecolor("black")
+            plt.show()
 
-    # Stretch and blur
-    stretched = cupyx.scipy.ndimage.zoom(rotated, (1, magnitude, 1), order=1)
-    if show:
-        show_image = cupy.asnumpy(stretched)
-        plt.imshow(show_image)
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        plt.show()
+        # Stretch and blur
+        stretched = cupyx.scipy.ndimage.zoom(rotated, (0.9, magnitude, 1), order=1)
+        padded = cupy.pad(stretched, pad_width=((0, 0), (kernel_size, kernel_size), (0, 0)), mode='constant', constant_values=0)
+        if show:
+            show_image = cupy.asnumpy(padded)
+            plt.imshow(show_image)
+            ax = plt.gca()
+            ax.set_facecolor("black")
+            plt.show()
 
-    result = cupy.zeros_like(stretched)
-    for channel in range(4):  # Loop over RGBA channels
-        result[:, :, channel] = cupyx.scipy.ndimage.convolve(stretched[:, :, channel], kernel, mode='constant', cval=0)
-    if show:
-        show_image = cupy.asnumpy(result)
-        plt.imshow(show_image)
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        plt.show()
-    # Rotate back
-    derotated = cupy.asarray(scipy.ndimage.rotate(result.get(), -angle.get(), reshape=True, mode='constant', cval=0))
+        result = cupy.zeros_like(padded)
+        for channel in range(4):  # Loop over RGBA channels
+            result[:, :, channel] = cupyx.scipy.ndimage.convolve(padded[:, :, channel], kernel, mode='constant', cval=0)
+        # if show:
+        #     show_image = cupy.asnumpy(result)
+        #     plt.imshow(show_image)
+        #     ax = plt.gca()
+        #     ax.set_facecolor("black")
+        #     plt.show()
+        # Rotate back
+        derotated = cupy.asarray(scipy.ndimage.rotate(result.get(), -angle.get(), reshape=True, mode='constant', cval=0))
 
-    if show:
-        show_image = cupy.asnumpy(derotated)
-        plt.imshow(show_image)
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        plt.show()
-    # Ensure sizes fit
-    derotated_height, derotated_width = derotated.shape[0], derotated.shape[1]
-    new_y1 = center_y - derotated_height // 2
-    new_y2 = new_y1 + derotated_height
-    new_x1 = center_x - derotated_width // 2
-    new_x2 = new_x1 + derotated_width
-    if new_y1 >= new_y2 or new_x1 >= new_x2:
-        raise ValueError("Invalid coordinates: new_y1 >= new_y2 or new_x1 >= new_x2")
+        # if show:
+        #     show_image = cupy.asnumpy(derotated)
+        #     plt.imshow(show_image)
+        #     ax = plt.gca()
+        #     ax.set_facecolor("black")
+        #     plt.show()
+        # Ensure sizes fit
+        derotated_height, derotated_width = derotated.shape[0], derotated.shape[1]
+        new_y1 = int(center_y - derotated_height // 2)
+        new_y2 = int(new_y1 + derotated_height)
+        new_x1 = int(center_x - derotated_width // 2)
+        new_x2 = int(new_x1 + derotated_width)
 
-    crop_y1 = max(0, -new_y1)
-    crop_y2 = derotated_height - max(0, new_y2 - image.shape[0])
-    crop_x1 = max(0, -new_x1)
-    crop_x2 = derotated_width - max(0, new_x2 - image.shape[1])
+        if new_y1 >= new_y2 or new_x1 >= new_x2:
+            raise ValueError("Invalid coordinates: new_y1 >= new_y2 or new_x1 >= new_x2")
 
-    derotated_cropped = derotated[crop_y1:crop_y2, crop_x1:crop_x2]
+        crop_y1 = max(0, -new_y1)
+        crop_y2 = derotated_height - max(0, new_y2 - image.shape[0])
+        crop_x1 = max(0, -new_x1)
+        crop_x2 = derotated_width - max(0, new_x2 - image.shape[1])
 
-    new_y1 = max(0, new_y1)
-    new_y2 = min(image.shape[0], new_y2)
-    new_x1 = max(0, new_x1)
-    new_x2 = min(image.shape[1], new_x2)
+        derotated_cropped = derotated[crop_y1:crop_y2, crop_x1:crop_x2]
 
-    if show:
-        show_image = cupy.asnumpy(derotated_cropped)
-        plt.imshow(show_image)
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        plt.show()
+        new_y1 = max(0, new_y1)
+        new_y2 = min(image.shape[0], new_y2)
+        new_x1 = max(0, new_x1)
+        new_x2 = min(image.shape[1], new_x2)
 
+        if show:
+            show_image = cupy.asnumpy(derotated_cropped)
+            plt.imshow(show_image)
+            ax = plt.gca()
+            ax.set_facecolor("black")
+            plt.show()
 
-    # Put back in original frame
-    image[new_y1:new_y2, new_x1:new_x2] = derotated_cropped
-    image[:, :, 3] = (image[:, :, 3] * blur_transparency).astype(np.uint8)
+        # Put back in original frame
+        old_crop_mask = np.zeros_like(cropped)
+        image[rois[1]:rois[3], rois[0]:rois[2]] = old_crop_mask     # deletes unblurred input
+        image[new_y1:new_y2, new_x1:new_x2] = derotated_cropped     # adds blurred input
+        image[:, :, 3] = (image[:, :, 3] * blur_transparency).astype(np.uint8)
 
-    if show:
-        show_image = cupy.asnumpy(image)
-        plt.imshow(show_image)
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        plt.show()
+        # if show:
+        #     show_image = cupy.asnumpy(image)
+        #     plt.imshow(show_image)
+        #     ax = plt.gca()
+        #     ax.set_facecolor("black")
+        #     plt.show()
 
     return image
 
@@ -402,7 +423,8 @@ def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame
         magnitude = np.sqrt(delta_x ** 2 + delta_y ** 2) / np.sqrt((max_x - min_x) ** 2 + (max_y - min_y) ** 2) * 8
         magnitude = np.min([magnitude, 5])
 
-        blurred_frame = create_blurred_frame_global_kernel(to_be_blurred_frame, magnitude, angle, min_x, min_y, max_x,max_y)
+        blurred_frame = create_blurred_frame_global_kernel(to_be_blurred_frame, magnitude, angle, min_x, min_y, max_x,
+                                                           max_y)
         blurred_frame[:, :, 3] = (blurred_frame[:, :, 3] * blur_transparency).astype(np.uint8)
 
         blur_path = get_motion_blur_folder(video_id).joinpath(Path(os.path.basename(current_frame_path)).stem + ".png")
@@ -423,15 +445,100 @@ def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame
     return image_path
 
 
+def read_image(file_path):
+    return cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+
+
+def write_image(file_path, image):
+    cv2.imwrite(file_path, image)
+
+
+def read_images(file_paths):
+    with ThreadPoolExecutor() as executor:
+        images = list(executor.map(read_image, file_paths))
+    return images
+
+
+def write_images(file_paths, images):
+    with ThreadPoolExecutor() as executor:
+        executor.map(write_image, file_paths, images)
+
+
+def get_roi_gpu(image, stream):
+    with stream:
+        alpha_channel = image[..., 3]
+        visible_pixels = cupy.argwhere(alpha_channel > 0)
+        min_y, min_x = cupy.min(visible_pixels, axis=0).get()
+        max_y, max_x = cupy.max(visible_pixels, axis=0).get()
+    return [min_x, min_y, max_x, max_y]
+
+
+def get_roi_cpu(image):
+    alpha_channel = image[..., 3]
+    visible_pixels = numpy.argwhere(alpha_channel > 0)
+    min_y, min_x = numpy.min(visible_pixels, axis=0).get()
+    max_y, max_x = numpy.max(visible_pixels, axis=0).get()
+    return [min_x, min_y, max_x, max_y]
+
+
+def get_center_gpu(roi, stream):
+    with stream:
+        center_x = ((roi[2] + roi[0]) / 2).item()
+        center_y = ((roi[3] + roi[1]) / 2).item()
+    return [center_x, center_y]
+
+def get_center_cpu(roi):
+    center_x = ((roi[2] + roi[0]) / 2).item()
+    center_y = ((roi[3] + roi[1]) / 2).item()
+    return [center_x, center_y]
+
+
+def get_delta_gpu(center, next_center, stream):
+    with stream:
+        delta_x = next_center[0] - center[0]
+        delta_y = next_center[1] - center[1]
+    return [delta_x, delta_y]
+
+def get_delta_cpu(center, next_center):
+    delta_x = next_center[0] - center[0]
+    delta_y = next_center[1] - center[1]
+    return [delta_x, delta_y]
+
+
+def get_angle_gpu(delta, stream):
+    with stream:
+        angle = cupy.degrees(cupy.arctan2(delta[1], delta[0]))
+    return angle
+
+def average_out_angle_gpu(angles):
+    angles = cupy.array(angles)
+    avg_angles = cupy.convolve(angles, cupy.array([1/5,1/5,1/5,1/5,1/5], dtype=cupy.float32), mode='same')
+    avg_angles = cupy.round(avg_angles, 1)
+    return avg_angles
+
+
+def get_angle_cpu(delta):
+    return (numpy.degrees(numpy.arctan2(delta[0], delta[1])) + 360 + 180) % 360
+
+
+def get_magnitude_gpu(delta, roi, stream):
+    with stream:
+        size = cupy.sqrt((roi[2] - roi[0]) ** 2 + (roi[3] - roi[1]) ** 2)
+        distance = cupy.sqrt(delta[0] ** 2 + delta[1] ** 2)
+        magnitude = float(distance / size) + 1
+    return magnitude
+
+def get_magnitude_cpu(delta, roi):
+    size = numpy.sqrt((roi[2] - roi[0]) ** 2 + (roi[3] - roi[1]) ** 2)
+    distance = numpy.sqrt(delta[0] ** 2 + delta[1] ** 2)
+    return float(distance / size) + 1
+
+
 def get_max_min_center_of_object_gpu(frame):
     alpha_channel = frame[..., 3]
     visible_pixels = cupy.argwhere(alpha_channel > 0)
     min_y, min_x = cupy.min(visible_pixels, axis=0).get()
     max_y, max_x = cupy.max(visible_pixels, axis=0).get()
-    min_y = min_y if min_y < 1 else min_y -1
-    min_x = min_x if min_x < 1 else min_x -1
-    min_x = min_x if min_x == frame.shape[0] else min_x + 1
-    max_y = max_y if max_y == frame.shape[1] else max_y + 1
     center_x = ((max_x + min_x) / 2).item()
     center_y = ((max_y + min_y) / 2).item()
     return int(min_x), int(center_x), int(max_x), int(min_y), int(center_y), int(max_y)
