@@ -8,10 +8,8 @@ from timeit import default_timer as timer
 import cupy
 import cupyx
 import cv2
-import matplotlib.pyplot as plt
 import numpy
 import numpy as np
-import scipy
 import supervision as sv
 import torch
 from PIL import Image
@@ -35,6 +33,7 @@ kernel_list[:, :] = None
 
 def get_device():
     return torch.device("cuda" if torch.cuda.is_available() and cupy.cuda.is_available() else "cpu")
+
 
 async def save_background(file: UploadFile, video_id):
     path = get_background_image(video_id, "temp_background" + Path(file.filename).suffix)
@@ -153,7 +152,6 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
             print("--- Preparing: %s seconds ---" % (prep_time - start))
             print("---------------------")
 
-            angles = cupy.round(angles, 1)
             print("magnitude: ", cupy.array(magnitudes[0:10]))
             # angles = average_out_angle_gpu(angles)
             with ThreadPoolExecutor() as executor:
@@ -211,69 +209,31 @@ def gpu_blur_image(image, angle, magnitude, rois, center, stream, blur_strength,
         kernel = cupy.zeros((1, kernel_size), dtype=cupy.float32)
         kernel[0] = 1.0 / kernel_size
 
-        # if show:
-        #     print(kernel_size)
-        #     print(kernel[0][0])
-        #     print(angle, magnitude, rois, center)
-
         # Crop ROI
         cropped = image[rois[1]:rois[3], rois[0]:rois[2]]
         center_y = center[1]
         center_x = center[0]
 
-        if show:
-            show_image = cupy.asnumpy(cropped)
-            plt.imshow(show_image)
-            ax = plt.gca()
-            ax.set_facecolor("black")
-            plt.show()
-
         # Rotate ROI
-        rotated = cupy.asarray(scipy.ndimage.rotate(cropped.get(), angle.get(), reshape=True, mode='constant', cval=0))
-        if show:
-            show_image = cupy.asnumpy(rotated)
-            plt.imshow(show_image)
-            ax = plt.gca()
-            ax.set_facecolor("black")
-            plt.show()
+        rotated = cupyx.scipy.ndimage.rotate(cropped, angle, reshape=True, mode='constant', cval=0)
 
         # Stretch and blur
         stretched = cupyx.scipy.ndimage.zoom(rotated, (0.9, magnitude, 1), order=1)
         padded = cupy.pad(stretched, pad_width=((0, 0), (kernel_size, kernel_size), (0, 0)), mode='constant', constant_values=0)
-        if show:
-            show_image = cupy.asnumpy(padded)
-            plt.imshow(show_image)
-            ax = plt.gca()
-            ax.set_facecolor("black")
-            plt.show()
 
         result = cupy.zeros_like(padded)
         for channel in range(4):  # Loop over RGBA channels
             result[:, :, channel] = cupyx.scipy.ndimage.convolve(padded[:, :, channel], kernel, mode='constant', cval=0)
-        # if show:
-        #     show_image = cupy.asnumpy(result)
-        #     plt.imshow(show_image)
-        #     ax = plt.gca()
-        #     ax.set_facecolor("black")
-        #     plt.show()
-        # Rotate back
-        derotated = cupy.asarray(scipy.ndimage.rotate(result.get(), -angle.get(), reshape=True, mode='constant', cval=0))
 
-        # if show:
-        #     show_image = cupy.asnumpy(derotated)
-        #     plt.imshow(show_image)
-        #     ax = plt.gca()
-        #     ax.set_facecolor("black")
-        #     plt.show()
-        # Ensure sizes fit
+        # Rotate back
+        derotated = cupyx.scipy.ndimage.rotate(result, -angle, reshape=True, mode='constant', cval=0)
+
+        # Calculate new x and y coordinates (necessary because of changed crop-size)
         derotated_height, derotated_width = derotated.shape[0], derotated.shape[1]
         new_y1 = int(center_y - derotated_height // 2)
         new_y2 = int(new_y1 + derotated_height)
         new_x1 = int(center_x - derotated_width // 2)
         new_x2 = int(new_x1 + derotated_width)
-
-        if new_y1 >= new_y2 or new_x1 >= new_x2:
-            raise ValueError("Invalid coordinates: new_y1 >= new_y2 or new_x1 >= new_x2")
 
         crop_y1 = max(0, -new_y1)
         crop_y2 = derotated_height - max(0, new_y2 - image.shape[0])
@@ -287,25 +247,13 @@ def gpu_blur_image(image, angle, magnitude, rois, center, stream, blur_strength,
         new_x1 = max(0, new_x1)
         new_x2 = min(image.shape[1], new_x2)
 
-        if show:
-            show_image = cupy.asnumpy(derotated_cropped)
-            plt.imshow(show_image)
-            ax = plt.gca()
-            ax.set_facecolor("black")
-            plt.show()
-
         # Put back in original frame
         old_crop_mask = np.zeros_like(cropped)
         image[rois[1]:rois[3], rois[0]:rois[2]] = old_crop_mask     # deletes unblurred input
         image[new_y1:new_y2, new_x1:new_x2] = derotated_cropped     # adds blurred input
-        image[:, :, 3] = (image[:, :, 3] * blur_transparency).astype(np.uint8)
 
-        # if show:
-        #     show_image = cupy.asnumpy(image)
-        #     plt.imshow(show_image)
-        #     ax = plt.gca()
-        #     ax.set_facecolor("black")
-        #     plt.show()
+        # Add transparency
+        image[:, :, 3] = (image[:, :, 3] * blur_transparency).astype(np.uint8)
 
     return image
 
@@ -508,7 +456,7 @@ def get_delta_cpu(center, next_center):
 def get_angle_gpu(delta, stream):
     with stream:
         angle = cupy.degrees(cupy.arctan2(delta[1], delta[0]))
-    return angle
+    return cupy.round(angle, 1)
 
 def average_out_angle_gpu(angles):
     angles = cupy.array(angles)
