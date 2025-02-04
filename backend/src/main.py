@@ -27,11 +27,12 @@ from image_editing import save_background
 from image_effects import process_effect_request
 
 
-from project_data import get_all_projects
+from project_data import get_all_projects, get_background_type
 from project_data import get_step_data
 from project_data import create_project
 from project_data import set_current_step
 from project_data import Step
+from project_data import BackgroundType, set_background_type
 
 
 app = FastAPI()
@@ -69,6 +70,35 @@ async def upload_background(file: UploadFile = File(...), video_id: str = Form(.
             status_code=500,
             content={"message": "Failed to upload background", "error": str(e)},
         )
+
+@app.post("/set-background-type")
+async def set_current_background_type(video_id: str = Form(...), background_type: str = Form(...)):
+    if background_type == "custom":
+        background = BackgroundType.CUSTOM
+    elif background_type == "transparent":
+        background = BackgroundType.TRANSPARENT
+    elif background_type == "video_frame":
+        background = BackgroundType.VIDEO_FRAME
+    else:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to set background type", "error": background_type + "is not a valid background_type."},
+        )
+    set_background_type(video_id, background)
+    return JSONResponse(status_code=200, content=video_id)
+
+
+@app.get("/get-background-type")
+async def get_current_background_type(video_id):
+    try:
+        background_type = get_background_type(video_id)
+        return JSONResponse(status_code=200, content=background_type)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to access background type from video", "error": str(e)},
+        )
+
 
 @app.get("/get-motion-blur-preview")
 async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_transparency: float, frame_skip: int):

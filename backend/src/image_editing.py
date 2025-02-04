@@ -16,12 +16,12 @@ from PIL import Image
 from cupyx.scipy import ndimage
 from fastapi import UploadFile
 
-from path_manager import get_background_image
+from path_manager import get_background_image, get_background_temp_image_path
 from path_manager import get_background_temp_image_folder
 from path_manager import get_foreground_temp_image_folder
 from path_manager import get_motion_blur_folder
 from path_manager import get_motion_blur_image
-from project_data import set_motion_blur_metadata, get_motion_blur_data
+from project_data import set_motion_blur_metadata, get_motion_blur_data, get_background_type, BackgroundType
 
 max_kernel_size = 60
 min_movement = 1
@@ -42,7 +42,7 @@ async def save_background(file: UploadFile, video_id):
         f.write(image_data.getbuffer())
 
     # Convert to rgba-png
-    final_image_path = get_background_image(video_id, "background.png")
+    final_image_path = get_background_image(video_id, "custom_background.png")
     image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if len(image.shape) == 3:
         image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
@@ -50,6 +50,35 @@ async def save_background(file: UploadFile, video_id):
 
     path.unlink()
     return final_image_path
+
+
+def get_background(video_id, frame_id):
+    background_type: BackgroundType = get_background_type(video_id)
+    if background_type == BackgroundType.CUSTOM.value:
+        background = get_custom_background(video_id)
+    elif background_type == BackgroundType.TRANSPARENT.value:
+        background = get_transparent_background(video_id, frame_id)
+    else:
+        background = get_video_frame_background(video_id, frame_id)
+    return background
+
+
+def get_custom_background(video_id):
+    background_path = get_background_image(video_id, "custom_background.png")
+    background = cv2.imread(background_path, cv2.IMREAD_UNCHANGED)
+    return background
+
+
+def get_video_frame_background(video_id, frame_id):
+    background_path = get_background_temp_image_path(video_id, frame_id)
+    background = cv2.imread(background_path, cv2.IMREAD_UNCHANGED)
+    return background
+
+
+def get_transparent_background(video_id, frame_id):
+    frame_path = get_background_temp_image_path(video_id, frame_id)
+    frame = cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
+    return numpy.zeros_like(frame)
 
 
 async def create_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip):
@@ -88,10 +117,12 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
     frames_paths = sorted(sv.list_files_with_extensions(directory=frame_path, extensions=["png"]))
     used_frame_paths = []
     load_start = timer()
-    for i in range(0, len(frames_paths), 1 + frame_skip):
-        used_frame_paths.append(frames_paths[i].__str__())
+    last_frame_id = len(frames_paths) - 1
+    for i in range(last_frame_id, -1, -(1 + frame_skip)):
+        print(i)
+        used_frame_paths.insert(0, frames_paths[i].__str__())
+    print(last_frame_id)
     used_frames = read_images(used_frame_paths)
-
     load_end = timer()
     print("--- Loading: %s seconds ---" % (load_end - load_start))
     print("---------------------")
@@ -112,12 +143,7 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
     batch_size = round(batch_size * 0.75)
     batch_size = len(used_frames) if batch_size > len(used_frames) else batch_size
 
-    # Copy background to result
-    background_path = get_motion_blur_image(video_id, "background.png")
-    background = cv2.imread(background_path, cv2.IMREAD_UNCHANGED)
-    cv2.imwrite(result_path.__str__(), background)
-
-    resulting_image = cv2.imread(result_path.__str__(), cv2.IMREAD_UNCHANGED)
+    resulting_image = get_background(video_id, last_frame_id)
     resulting_image_gpu = cupy.array(resulting_image, dtype=cupy.uint8)
 
     # generate image batch for batch
@@ -205,7 +231,7 @@ def cpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
 def gpu_blur_image(image, angle, magnitude, rois, center, stream, blur_strength, blur_transparency, frame_skip, show):
     with stream:
         # create kernel based on blur_strength, magnitude and frame_skip
-        kernel_size = int(magnitude * 15 + blur_strength * 5 + frame_skip * 5)
+        kernel_size = int(magnitude * 15 + blur_strength * 15 + frame_skip * 5)
         kernel = cupy.zeros((1, kernel_size), dtype=cupy.float32)
         kernel[0] = 1.0 / kernel_size
 

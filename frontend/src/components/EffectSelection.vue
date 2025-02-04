@@ -4,6 +4,7 @@ import { store } from "@/store.js";
 import router from "@/router/index.js";
 import axios from "axios";
 import TimelineComponent from "@/components/TimelineComponent.vue";
+import BackgroundSelection from "@/components/BackgroundSelection.vue";
 
 const isLoading = ref(false);
 const loadingText = ref("")
@@ -55,39 +56,6 @@ onMounted(async () => {
 const toggleInfo = () => {
   showInfo.value = !showInfo.value;
 }
-
-const handleBackgroundUpload = async (event) => {
-  if (isLoading.value) {
-    return;
-  }
-  isLoading.value = true;
-  const file = event.target.files[0];
-  if (file) {
-    try {
-      const backgroundFormData = new FormData();
-      backgroundFormData.append("file", file);
-      backgroundFormData.append("video_id", videoId.value);
-      console.log("Uploading background for: " + videoId.value);
-
-      const background = await axios.post(
-          `${store.apiUrl}/upload-background`,
-          backgroundFormData,
-          {
-            responseType: "blob",
-          }
-      );
-      uploadedBackground.value = URL.createObjectURL(background.data);
-      store.selectedBackground = background.data;
-      console.log("Uploaded Background!");
-    } catch (e) {
-      console.error(e);
-    }
-  }
-  isLoading.value = false;
-};
-
-const openFileDialog = () =>
-      document.querySelector('input[type="file"]').click();
 
 const generateImage = async () => {
   if (isLoading.value) {
@@ -203,77 +171,52 @@ const moveToFinalEffects = () => {
           <v-tabs-window-item :key="1" :value="1" class="h-100">
             <div class="effect-container h-100">
               <div class="user-input h-100">
-                <div class="background-container" style="position: relative;">
-                  <h3 class="pb-2">Background</h3>
-                  <div
-                    v-if="uploadedBackground"
-                    @click="openFileDialog"
-                    class="background-preview"
-                  >
-                    <img alt="Uploaded background" :src="uploadedBackground" />
-                  </div>
-                  <div
-                    v-else
-                    @click="openFileDialog"
-                    class="p-5 rounded border w-100 h-75 text-center align-content-center"
-                  >
-                    Click to upload a background
-                  </div>
-                  <v-file-input
-                    label="Upload a Background"
-                    @change="handleBackgroundUpload"
-                    accept="image/*"
-                    class="d-none"
-                    prepend-icon="mdi-upload"
-                  ></v-file-input>
+                <BackgroundSelection :video-id="videoId" class="pb-2"/>
+                <h3 class="pb-2">Settings</h3>
+                <div class="text-caption">
+                  Strength of Blur-Effect ({{ blurStrength }})
                 </div>
-                <div class="settings-container">
-                  <h3 class="pb-2">Settings</h3>
-                  <div class="text-caption">
-                    Strength of Blur-Effect ({{ blurStrength }})
-                  </div>
-                  <v-slider
-                    v-model="blurStrength"
-                    show-ticks="always"
-                    tick-size="5"
-                    thumb-label
-                    :max="5"
-                    :min="1"
-                    :step="1"
-                  ></v-slider>
-                  <div class="text-caption">
-                    Transparency of Blur-Effect ({{ blurTransparency }})
-                  </div>
-                  <v-slider
-                    v-model="blurTransparency"
-                    show-ticks="always"
-                    tick-size="5"
-                    thumb-label
-                    :max="1"
-                    :min="0"
-                    :step="0.1"
-                  ></v-slider>
-                  <div class="text-caption">
-                    Frame Skip [EXPERIMENTAL] ({{ frameSkip }})
-                  </div>
-                  <v-slider
-                    v-model="frameSkip"
-                    show-ticks="always"
-                    tick-size="5"
-                    thumb-label
-                    :max="20"
-                    :min="0"
-                    :step="1"
-                  ></v-slider>
-                  <v-btn
-                    class="continue-button"
-                    style="margin-top: 20px; align-self: flex-end;"
-                    color="primary"
-                    @click="moveToFinalEffects"
-                  >
-                    Continue
-                  </v-btn>
+                <v-slider
+                  v-model="blurStrength"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="5"
+                  :min="1"
+                  :step="1"
+                ></v-slider>
+                <div class="text-caption">
+                  Transparency of Blur-Effect ({{ blurTransparency }})
                 </div>
+                <v-slider
+                  v-model="blurTransparency"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="1"
+                  :min="0"
+                  :step="0.1"
+                ></v-slider>
+                <div class="text-caption">
+                  Frame Skip [EXPERIMENTAL] ({{ frameSkip }})
+                </div>
+                <v-slider
+                  v-model="frameSkip"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="20"
+                  :min="0"
+                  :step="1"
+                ></v-slider>
+                <v-btn
+                  class="continue-button"
+                  style="margin-top: 20px; align-self: flex-end;"
+                  color="primary"
+                  @click="moveToFinalEffects"
+                >
+                  Continue
+                </v-btn>
               </div>
               <v-card class="image-preview-container">
                 <div>
@@ -449,32 +392,8 @@ const moveToFinalEffects = () => {
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
-  width: 35%;
-}
-
-.background-container {
-  width: 100%;
+  width: 40%;
   padding: 1em;
-  height: 30%;
-  position: relative;
-}
-
-.background-preview {
-  height: 80%;
-  width: 100%;
-}
-
-.background-preview img {
-  max-height: 100%;
-  max-width: 100%;
-}
-
-.settings-container {
-  display: flex;
-  flex-direction: column;
-  padding: 1em;
-  width: 100%;
-  height: 70%;
 }
 
 .image-preview-container {
