@@ -41,5 +41,3 @@ def process_effect_request(video_id, brightness, contrast, saturation, output_fo
         )
     except Exception as e:
         raise RuntimeError(f"Failed to process effect request: {str(e)}")
-
-

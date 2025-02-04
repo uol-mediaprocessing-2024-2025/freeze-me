@@ -27,6 +27,23 @@ onMounted(async () => {
   console.log(videos.value)
 });
 
+const deleteVideo = async (video) => {
+  if (!confirm(`Möchtest du das Projekt ${video.id} wirklich löschen?`)) return;
+
+  try {
+    await axios.delete(`${store.apiUrl}/delete-video?video_id=${video.id}`);
+
+    // Entferne das Video aus der Liste, ohne die Seite neu zu laden
+    videos.value = videos.value.filter(v => v.id !== video.id);
+
+    console.log(`Projekt ${video.id} wurde erfolgreich gelöscht`);
+  } catch (error) {
+    console.error("Fehler beim Löschen des Projekts:", error);
+    alert("Das Projekt konnte nicht gelöscht werden.");
+  }
+};
+
+
 // Function to handle image click and navigate to the main view
 const handleVideoClick = (video) => {
   store.selectedVideoId = video.id; // Set the selected image in the store
@@ -51,6 +68,7 @@ const handleVideoClick = (video) => {
     <v-row dense>
       <v-col v-for="(video, index) in videos" :key="index" class="d-flex child-flex" cols="12" sm="8" md="6" lg="4" xl="4">
         <div class="rounded border pa-5 video-container d-flex flex-sm-column">
+          <button class="delete-btn" @click.stop="deleteVideo(video)">❌</button>
           <img class="video" :src="video.thumbnail" @click="handleVideoClick(video)" alt="Thumbnail of video">
           <div class="progress-line">
             <img :src="video.available_steps.indexOf('video-editing') >= 0 ? 'src/assets/workflow/video-cut-available.svg' : 'src/assets/workflow/video-cut-unavailable.svg'"
@@ -73,6 +91,7 @@ const handleVideoClick = (video) => {
     </v-row>
   </div>
 </template>
+
 
 <style scoped>
 
@@ -119,4 +138,29 @@ const handleVideoClick = (video) => {
     transform: scale(1.1);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
 }
+
+.delete-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: white;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease-in-out, transform 0.2s;
+}
+
+.delete-btn:hover {
+  background-color: red;
+  transform: scale(1.1);
+}
+
 </style>

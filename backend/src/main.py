@@ -20,7 +20,7 @@ from video_editing import add_new_point_to_segmentation
 from video_editing import get_masked_video
 from video_editing import cut_video
 from video_editing import get_frame
-from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image
+from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image, delete_project
 from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed
 from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image
 from image_editing import save_background
@@ -155,23 +155,20 @@ if __name__ == "__main__":
 
 @app.post("/cut-video")
 async def cut_video_endpoint(video_id: Annotated[str, Form()], start_time: Annotated[float, Form()], end_time: Annotated[float, Form()]):
-    """
-    API-Endpunkt, um ein Video auf einen bestimmten Zeitraum zu schneiden.
-    """
+
     try:
-        # Hier rufen wir die cut_video-Methode auf und erhalten den Pfad zum geschnittenen Video
         print(video_id, start_time, end_time)
 
         cut_video_path = await cut_video(video_id, start_time, end_time)
         print("Created cut_video at path:" + cut_video_path.__str__())
-        # Rückgabe der Erfolgsnachricht und des Pfades zum geschnittenen Video
+
         return FileResponse(cut_video_path, media_type="video/mp4")
 
     except Exception as e:
         print(e)
         print(e.__traceback__)
         print(traceback.format_exc())
-        # Detaillierte Fehlerbehandlung und -meldung
+
         return JSONResponse(
             status_code=500,
             content={"message": "Fehler beim Schneiden des Videos", "error": str(e)}
@@ -187,7 +184,7 @@ async def get_all_video_ids():
         print(e)
         print(e.__traceback__)
         print(traceback.format_exc())
-        # Detaillierte Fehlerbehandlung und -meldung
+
         return JSONResponse(
             status_code=500,
             content={"message": "Fehler beim Laden der VideoIds", "error": str(e)}
@@ -208,6 +205,21 @@ async def get_project_progress(video_id: str):
             status_code=500,
             content={"message": "Fehler beim Laden der VideoIds", "error": str(e)}
         )
+
+@app.delete("/delete-video")
+async def delete_video(video_id: str):
+
+    try:
+        if delete_project(video_id):
+            return JSONResponse(status_code=200, content={"message": f"Projekt {video_id} wurde erfolgreich gelöscht"})
+        else:
+            return JSONResponse(status_code=404, content={"message": "Projekt nicht gefunden oder konnte nicht gelöscht werden"})
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Fehler beim Löschen des Projekts {video_id}", "error": str(e)}
+        )
+
 
 @app.get("/get-frame")
 async def get_first_frame_of_video(video_id: str, frame_num: int):
