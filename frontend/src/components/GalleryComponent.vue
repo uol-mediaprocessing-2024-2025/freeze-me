@@ -76,9 +76,6 @@ const handleVideoClick = (video) => {
             <img :src="video.available_steps.indexOf('segmentation') >= 0 ? 'src/assets/workflow/segmentation-available.svg' : 'src/assets/workflow/segmentation-unavailable.svg'"
                  class="progress-icon" :class="video.current_step == 'segmentation' ? 'current-step' : '' ">
             <span class="divider"></span>
-            <img :src="video.available_steps.indexOf('background') >= 0 ? 'src/assets/workflow/background-available.svg' : 'src/assets/workflow/background-unavailable.svg'"
-                 class="progress-icon" :class="video.current_step == 'background' ? 'current-step' : '' ">
-            <span class="divider"></span>
             <img :src="video.available_steps.indexOf('main-effect') >= 0 ? 'src/assets/workflow/main-effect-available.svg' : 'src/assets/workflow/main-effect-unavailable.svg'"
                  class="progress-icon" :class="video.current_step == 'main-effect' ? 'current-step' : '' ">
             <span class="divider"></span>
