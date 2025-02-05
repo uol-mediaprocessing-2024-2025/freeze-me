@@ -24,7 +24,9 @@ def get_config_path():
         print("Possible values are: large, b_plus, small, tiny")
         print("Defaulting to small")
     prefix_path = Path.cwd()
-    if os.path.dirname(prefix_path).__eq__("src"):
+    print(prefix_path)
+    print(os.path.dirname(prefix_path))
+    if prefix_path.parent.__eq__("backend"):
         prefix_path = prefix_path.parent
     match path:
         case "large":
@@ -44,7 +46,7 @@ def get_checkpoint_path():
         print("Possible values are: large, b_plus, small, tiny")
         print("Defaulting to small")
     prefix_path = Path.cwd()
-    if os.path.dirname(prefix_path).__eq__("src"):
+    if prefix_path.parent.__eq__("backend"):
         prefix_path = prefix_path.parent
     match path:
         case "large":
