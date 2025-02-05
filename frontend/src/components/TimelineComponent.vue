@@ -16,9 +16,10 @@ import router from "@/router/index.js";
       const video_data = (await axios.get(`${store.apiUrl}/project-data?video_id=` + store.selectedVideoId)).data
       console.log(video_data)
       store.steps.segmentation = video_data.available_steps.includes("segmentation")
-      store.steps.main_effect = video_data.available_steps.includes("main_effect")
-      store.steps.after_effect = video_data.available_steps.includes("after_effect")
+      store.steps.mainEffect = video_data.available_steps.includes("main-effect")
+      store.steps.afterEffect = video_data.available_steps.includes("after-effect")
       current_step.value = video_data.current_step
+      console.log(store)
     }
   })
 
