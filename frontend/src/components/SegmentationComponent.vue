@@ -38,8 +38,8 @@ onMounted(async () => {
       responseType: "json"
     })
 
-    frameNum.value = response.data
-    totalFrames.value = response.data
+    frameNum.value = response.data - 1
+    totalFrames.value = response.data - 1
     if (store.segmentedFrame == null) {
       await loadFrame()
     } else {
@@ -97,9 +97,10 @@ const handleDotSubmit = async () => {
   } catch (e) {
     console.error(e)
     console.error(e.response.data)
+  } finally {
+    isLoading.value = false
+    loadingText.value = "";
   }
-  isLoading.value = false
-  loadingText.value = "";
 }
 
 // Function to toggle the info popup visibility
@@ -166,7 +167,7 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
               tick-size="5"
               thumb-label
               :max="totalFrames"
-              :min="1"
+              :min="0"
               :step="1"
               class="pr-5"
             ></v-slider>
