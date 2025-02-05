@@ -7,6 +7,7 @@ import cv2
 import supervision as sv
 from sam2.sam2_video_predictor import SAM2VideoPredictor
 
+from image_editing import read_images
 from path_manager import create_all_paths
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
@@ -64,9 +65,6 @@ from fastapi import UploadFile
 import shutil
 
 inference_state: {}
-points: []
-labels: []
-last_frame = -1
 fps = 0
 
 
@@ -113,10 +111,8 @@ async def get_video_details(video_id):
 
 async def initialize_segmentation(video_id):
     try:
-        global inference_state, points, labels
+        global inference_state
         image_folder = get_images_path(video_id)
-        points = []
-        labels = []
         inference_state = predictor.init_state(video_path=image_folder.__str__())
     except Exception as e:
         print(e)
@@ -134,12 +130,8 @@ async def get_frame(video_id, frame_id):
 
 async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num):
     try:
-        global inference_state, points, labels, last_frame
-        print(last_frame, frame_num)
-        if last_frame != frame_num:
-            points = []
-            labels = []
-            last_frame = frame_num
+        points = []
+        labels = []
         points.append([point_x, point_y])
         labels.append(point_type)
         print(points, labels)
@@ -186,9 +178,10 @@ async def get_masked_video(video_id):
         foreground_frames = []
         # run propagation throughout the video and collect the results in a dict
         temp_file = get_temp_file_path(video_id)
+        frames = read_images(frames_paths)
         with sv.VideoSink(temp_file.__str__(), video_info=video_info) as sink:
-            for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state):
-                frame = cv2.imread(frames_paths[out_frame_idx])
+            for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state, start_frame_idx=0):
+                frame = frames[out_frame_idx]
                 masks = (out_mask_logits > 0.0).cpu().numpy()
                 n, x, h, w = masks.shape
                 masks = masks.reshape(n * x, h, w)

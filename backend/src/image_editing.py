@@ -178,7 +178,7 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
             print("--- Preparing: %s seconds ---" % (prep_time - start))
             print("---------------------")
 
-            print("magnitude: ", cupy.array(magnitudes[0:10]))
+            print("magnitude: ", cupy.array(magnitudes))
             # angles = average_out_angle_gpu(angles)
             with ThreadPoolExecutor() as executor:
                 streams = [cupy.cuda.Stream() for _ in batch_gpu[:-1]]
