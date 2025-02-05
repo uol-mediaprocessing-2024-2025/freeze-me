@@ -70,7 +70,7 @@ watch(selectedEffect, async () => {
 const downloadImage = () => {
   const link = document.createElement("a");
   link.href = previewUrl.value;
-  link.download = `${selectedEffect}-edited-image.png`;
+  link.download = `${selectedEffect.value}-edited-image.png`;
   link.click();
 };
 
