@@ -42,14 +42,23 @@ import router from "@/router/index.js";
   const goToStep = (step) => {
     switch (step) {
       case 'segmentation':
+        if (!store.steps.segmentation) {
+          return
+        }
         current_step.value = 'segmentation'
         router.push({ path: 'segmentation' })
         break;
       case 'main-effect':
+        if (!store.steps.mainEffect) {
+          return
+        }
         current_step.value = 'main-effect'
         router.push({ path: 'effect-selection' })
         break;
       case 'after-effect':
+        if (!store.steps.afterEffect) {
+          return
+        }
         current_step.value = 'after-effect'
         router.push({ path: 'final-effects' })
         break;
@@ -70,21 +79,21 @@ import router from "@/router/index.js";
     </v-card>
 
     <span class="divider" :class="segmentation ? 'colored-divider' : ''"></span>
-    <v-card class="step-card" :class="segmentation ? 'clickable' : ''" elevation="3" @click="goToStep('segmentation')">
+    <v-card class="step-card" :class="segmentation ? 'clickable' : ''" elevation="3" @click="goToStep('segmentation')" :disabled="!segmentation">
       <img :src="segmentation ? 'src/assets/workflow/segmentation-available.svg' : 'src/assets/workflow/segmentation-unavailable.svg'"
          class="progress-icon" :class="current_step === 'segmentation' ? 'current-step' : '' ">
       <p>Segmentation</p>
     </v-card>
 
     <span class="divider" :class="main_effect ? 'colored-divider' : ''"></span>
-    <v-card class="step-card" :class="main_effect ? 'clickable' : ''" elevation="3" @click="goToStep('main-effect')">
+    <v-card class="step-card" :class="main_effect ? 'clickable' : ''" elevation="3" @click="goToStep('main-effect')" :disabled="!main_effect">
       <img :src="main_effect ? 'src/assets/workflow/main-effect-available.svg' : 'src/assets/workflow/main-effect-unavailable.svg'"
          class="progress-icon" :class="current_step === 'main-effect' ? 'current-step' : '' ">
       <p>Main-Effect</p>
     </v-card>
 
     <span class="divider" :class="after_effect ? 'colored-divider' : ''"></span>
-    <v-card class="step-card" :class="after_effect ? 'clickable' : ''" elevation="3" @click="goToStep('after-effect')">
+    <v-card class="step-card" :class="after_effect ? 'clickable' : ''" elevation="3" @click="goToStep('after-effect')" :disabled="!after_effect">
       <img :src="after_effect ? 'src/assets/workflow/after-effect-available.svg' : 'src/assets/workflow/after-effect-unavailable.svg'"
          class="progress-icon" :class="current_step === 'after-effect' ? 'current-step' : '' ">
       <p>After-Effects</p>
@@ -108,6 +117,11 @@ import router from "@/router/index.js";
   justify-items: center;
   width: 7em;
   padding: 0.5em 0;
+}
+
+.step-card:hover {
+  cursor: default;
+  background: rgba(0,0,0,0);
 }
 
 .clickable:hover {
