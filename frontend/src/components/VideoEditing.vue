@@ -6,7 +6,6 @@ import axios from "axios";
 
 const isLoading = ref(false);  // Boolean to show a loading spinner while the image is being processed
 const loadingText = ref("");  // Boolean to show a loading spinner while the image is being processed
-const fileBlob = ref(null);
 const videoId = ref(null);
 const displayedVideo = ref(null);
 
@@ -21,7 +20,6 @@ const startTime = ref(0);  // Start time for cutting video
 const endTime = ref(0);    // End time for cutting video
 
 const resetVideo = () => {
-    fileBlob.value = null;
     displayedVideo.value = null;
     store.selectedVideo = null;
     store.selectedVideoId = null;
@@ -39,26 +37,33 @@ const resetVideo = () => {
     document.querySelector('input[type="file"]').value = '';
 };
 
-onMounted(() => resetVideo())
+onMounted(async () => {
+  const id = store.selectedVideoId
+  if (id != null) {
+    displayedVideo.value = store.selectedVideo
+    videoId.value = id
+    await updateVideoDetails()
+  }
+})
 
 // Handle video upload
 const handleVideoUpload = async (event) => {
     const file = event.target.files[0];
-
-    if (file) {
-        fileBlob.value = file; // Store the uploaded file as a Blob
-        displayedVideo.value = URL.createObjectURL(file); // Display the uploaded video
-        store.selectedVideo = displayedVideo;
-        store.videoUrls.push(displayedVideo.value); // Store the uploaded video in the global store
-        store.segmentedFrame = null;
+    if (!file) {
+      return;
     }
+    const fileBlob = file; // Store the uploaded file as a Blob
+    displayedVideo.value = URL.createObjectURL(file); // Display the uploaded video
+    store.selectedVideo = displayedVideo;
+    store.videoUrls.push(displayedVideo.value); // Store the uploaded video in the global store
+    store.segmentedFrame = null;
 
     isLoading.value = true;
     loadingText.value = "Uploading and processing video...";
     try {
         const videoFormData = new FormData();
-        videoFormData.append('file', fileBlob.value);
-        console.log(fileBlob.value);
+        videoFormData.append('file', fileBlob);
+        console.log(fileBlob);
 
         // Make a POST request to the backend API to upload the video
         const id_response = await axios.post(`${store.apiUrl}/upload-video`, videoFormData, {

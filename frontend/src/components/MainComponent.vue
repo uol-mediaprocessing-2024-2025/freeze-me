@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from "vue";
-import VideoPlayer from "@/components/VideoPlayer.vue";
+import {ref} from "vue";
+import VideoPlayer from "@/components/VideoEditing.vue";
 import TimelineComponent from "@/components/TimelineComponent.vue";
 
 // State to manage the visibility of the info popup
@@ -14,7 +14,7 @@ const toggleInfo = () => {
 
 <template>
   <!-- Main container to center the content on the screen -->
-  <v-container class="d-flex flex-column align-center justify-center main-container">
+  <v-container class="d-flex align-center justify-center main-container">
     <TimelineComponent/>
     <!-- A card to contain the form and images -->
     <v-card elevation="2" class="pa-4 card-container">
@@ -48,6 +48,11 @@ const toggleInfo = () => {
 <style scoped>
 .main-container {
   height: 93vh;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
 }
 
 .card-container {

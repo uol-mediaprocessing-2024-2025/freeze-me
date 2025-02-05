@@ -18,7 +18,7 @@ const estimatedX = ref(null)
 const estimatedY = ref(null)
 const dotX = ref("0px")
 const dotY = ref("0px")
-const dotSize = ref(50)
+const dotSize = ref(40)
 const maskedImage = ref(false)
 const segmentedVideo = ref(null)
 const showInfo = ref(false);
@@ -131,7 +131,7 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
 
 <template>
   <main>
-    <v-container class="d-flex flex-column align-center justify-center segmentation-container">
+    <v-container class="d-flex align-center justify-center segmentation-container">
       <!-- A card to contain the form and images -->
       <TimelineComponent/>
       <v-card elevation="2" class="pa-4 segmentation-card-container">
@@ -244,6 +244,11 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
 
 .segmentation-container {
   height: 93vh;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
 }
 
 .segmentation-card-container {

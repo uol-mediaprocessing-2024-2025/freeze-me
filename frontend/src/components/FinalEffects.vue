@@ -82,7 +82,7 @@ const toggleInfo = () => {
 
 <template>
   <main>
-    <v-container class="d-flex flex-column align-center justify-center segmentation-container">
+    <v-container class="d-flex align-center justify-center segmentation-container">
       <TimelineComponent/>
       <v-card elevation="2" class="pa-4 segmentation-card-container">
         <div class="info-button-container">
@@ -243,6 +243,11 @@ const toggleInfo = () => {
 <style scoped>
 .segmentation-container {
   height: 93vh;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
 }
 
 .segmentation-card-container {

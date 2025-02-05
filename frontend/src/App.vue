@@ -1,3 +1,21 @@
+<script setup>
+import {store} from "@/store.js";
+
+const resetStore = () => {
+  store.selectedVideoId = null;
+  store.selectedVideo = null;
+  store.videoUrls = null;
+  store.totalFrames = 0;
+  store.selectedBackground = null;
+  store.segmentedFrame = null;
+  store.cutVideoFile = null;
+  store.steps.videoEditing = false;
+  store.steps.segmentation = false;
+  store.steps.background = false;
+  store.steps.mainEffect = false;
+  store.steps.afterEffect = false;
+}
+</script>
 <template>
     <!-- Main application container -->
     <v-app id="app">
@@ -6,7 +24,7 @@
           <v-app-bar-title>Freeze Me</v-app-bar-title>
         </div>
         <!-- Link to the main view -->
-        <v-btn class="d-flex mr-4 no-focus-highlight" variant="outlined" prepend-icon="mdi-home" link to="/">
+        <v-btn class="d-flex mr-4 no-focus-highlight" variant="outlined" prepend-icon="mdi-home" link to="/" @click="resetStore">
             Create New Project
         </v-btn>
 

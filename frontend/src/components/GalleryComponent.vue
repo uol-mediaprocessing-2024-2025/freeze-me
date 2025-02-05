@@ -18,7 +18,6 @@ onMounted(async () => {
     const thumbnail_data = await axios.get(`${store.apiUrl}/get-frame?video_id=` + id + '&frame_num=0', {
           responseType: 'blob'
         })
-    console.log(video_data)
     let thumbnail = null
     thumbnail = URL.createObjectURL(thumbnail_data.data)
     video_data.thumbnail = thumbnail

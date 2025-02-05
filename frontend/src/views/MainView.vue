@@ -11,6 +11,7 @@ import MainComponent from '../components/MainComponent.vue'
 <style>
 .main-view {
   height: 78vh;
+  width: 100%;
 }
 
 .progress-bar-container {
