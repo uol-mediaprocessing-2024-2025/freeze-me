@@ -25,6 +25,9 @@ const frameOffset = ref(0); //
 const frameOffsetMin = ref(0); // Minimaler Wert für den Offset
 const frameOffsetMax = ref(100); // Maximaler Wert für den Offset
 const showInfo = ref(false);
+const showPreviewModal = ref(false);
+const previewImageSrc = ref("");
+
 
 watch(selectedEffectType, (newValue) => {
   if (newValue === "last") {
@@ -89,6 +92,12 @@ const generateImage = async () => {
   isLoading.value = false;
   loadingText.value = ""
 };
+
+const openPreview = (imageSrc) => {
+  previewImageSrc.value = imageSrc;
+  showPreviewModal.value = true;
+};
+
 
 const applyMultipleInstancesEffect = async () => {
   if (!videoId.value) {
@@ -222,10 +231,11 @@ const moveToFinalEffects = () => {
                 <div>
                   <h3 class="pb-2">Image Preview</h3>
                   <img
-                    v-if="motionBlurPreview"
-                    :src="motionBlurPreview"
-                    alt="preview of generated image"
-                    class="image-preview"
+                  v-if="motionBlurPreview"
+                  :src="motionBlurPreview"
+                  alt="preview of generated image"
+                  class="image-preview"
+                  @click="openPreview(motionBlurPreview)"
                   />
                   <!-- Loading overlay with centered spinner -->
                   <div v-if="isLoading" class="loading-overlay">
@@ -350,6 +360,7 @@ const moveToFinalEffects = () => {
                       :src="multipleInstancePreview"
                       alt="preview of generated image"
                       class="image-preview"
+                      @click="openPreview(multipleInstancePreview)"
                     />
                     <!-- Loading overlay with centered spinner -->
                     <div v-if="isLoading" class="loading-overlay">
@@ -373,6 +384,16 @@ const moveToFinalEffects = () => {
         </v-tabs-window>
       </v-card>
     </v-container>
+    <v-dialog v-model="showPreviewModal" max-width="1200px">
+  <v-card>
+    <v-card-text>
+      <img :src="previewImageSrc" class="full-size-image" />
+    </v-card-text>
+    <v-card-actions>
+      <v-btn @click="showPreviewModal = false">Close</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
   </main>
 </template>
 
@@ -423,12 +444,21 @@ const moveToFinalEffects = () => {
   width: fit-content;
   max-width: 100%;
   max-height: 80%;
+  cursor: pointer;
+}
+
+.full-size-image {
+  width: 100%;
+  height: auto;
+  max-width: 90vw;
+  max-height: 90vh;
 }
 
 .continue-button {
   margin-top: 20px;
   align-self: flex-end;
 }
+
 .info-button-container {
   position: absolute;
   top: 16px;
@@ -447,8 +477,8 @@ const moveToFinalEffects = () => {
 
 .info-popup {
   position: absolute;
-  top: calc(100% + 8px); /* Popup unterhalb des Buttons */
-  right: 0; /* Popup an der rechten Seite des Buttons ausrichten */
+  top: calc(100% + 8px);
+  right: 0;
   width: 600px;
   padding: 16px;
   z-index: 10;
@@ -456,5 +486,4 @@ const moveToFinalEffects = () => {
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
 }
-
 </style>

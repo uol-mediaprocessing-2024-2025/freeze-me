@@ -13,6 +13,9 @@ const brightness = ref(100); // Prozentuale Helligkeit
 const contrast = ref(100); // Prozentualer Kontrast
 const saturation = ref(100); // Prozentuale Sättigung
 const showInfo = ref(false);
+const showPreviewModal = ref(false);
+const previewImageSrc = ref("");
+
 
 onMounted(async () => {
   videoId.value = store.selectedVideoId;
@@ -62,6 +65,12 @@ const updatePreview = async () => {
     isLoading.value = false;
   }
 };
+
+const openPreview = (imageSrc) => {
+  previewImageSrc.value = imageSrc;
+  showPreviewModal.value = true;
+};
+
 
 watch(selectedEffect, async () => {
   await loadPreview(); // Bild neu laden bei Effektwechsel
@@ -153,6 +162,7 @@ const toggleInfo = () => {
                     :src="previewUrl"
                     alt="Preview of final image"
                     class="image-preview"
+                    @click="openPreview(previewUrl)"
                     :style="{
                       filter: `
                         brightness(${brightness}%)
@@ -218,6 +228,7 @@ const toggleInfo = () => {
                     :src="previewUrl"
                     alt="Preview of final image"
                     class="image-preview"
+                    @click="openPreview(previewUrl)"
                     :style="{
                       filter: `
                         brightness(${brightness}%)
@@ -237,6 +248,16 @@ const toggleInfo = () => {
         </v-tabs-window>
       </v-card>
     </v-container>
+    <v-dialog v-model="showPreviewModal" max-width="1200px">
+  <v-card>
+    <v-card-text>
+      <img :src="previewImageSrc" class="full-size-image" />
+    </v-card-text>
+    <v-card-actions>
+      <v-btn @click="showPreviewModal = false">Close</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
   </main>
 </template>
 
@@ -298,6 +319,18 @@ const toggleInfo = () => {
   border: 1px solid #ccc;
   border-radius: 8px;
 }
+
+.image-preview {
+  cursor: pointer;
+}
+
+.full-size-image {
+  width: 100%;
+  height: auto;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
 .info-button-container {
   position: absolute;
   top: 16px;

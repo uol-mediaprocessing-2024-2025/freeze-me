@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import shutil
 
 FOLDER_PATH = "videos"
 IMAGE_PATH = "images"
@@ -11,8 +12,8 @@ CUT_BACKGROUND_IMAGES_FOLDER = "temp_background"
 BACKGROUND_UPLOAD = "background.jpeg"
 MOTION_BLUR_FOLDER = "blurred-frames"
 TEMP_FILE_NAME = "temp.mp4"
-CHECKPOINT_PATH = "../checkpoints"
-CONFIG_PATH = "../configs"
+CHECKPOINT_PATH = "checkpoints"
+CONFIG_PATH = "configs"
 MULTIPLE_INSTANCES_FOLDER = "multiple_instances"
 WORKFLOW_DATA_FILE="workflow.json"
 
@@ -55,6 +56,25 @@ def get_checkpoint_path():
         case _:
             path = prefix_path.joinpath(CHECKPOINT_PATH).joinpath("sam2.1_hiera_small.pt").absolute()
     return path.as_posix()
+
+import shutil
+
+def delete_project(video_id):
+
+    project_folder = get_video_folder_path(video_id)
+
+    if project_folder.exists():
+        try:
+            shutil.rmtree(project_folder)
+            print(f"Projekt {video_id} erfolgreich gelöscht.")
+            return True
+        except Exception as e:
+            print(f"Fehler beim Löschen des Projekts {video_id}: {e}")
+            return False
+    else:
+        print(f"Projekt {video_id} existiert nicht.")
+        return False
+
 
 def get_main_folder():
     return Path.cwd().joinpath(FOLDER_PATH)

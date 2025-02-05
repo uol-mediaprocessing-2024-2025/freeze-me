@@ -8,7 +8,6 @@ from timeit import default_timer as timer
 import cupy
 import cupyx
 import cv2
-import numpy
 import numpy as np
 import supervision as sv
 import torch
@@ -78,7 +77,7 @@ def get_video_frame_background(video_id, frame_id):
 def get_transparent_background(video_id, frame_id):
     frame_path = get_background_temp_image_path(video_id, frame_id)
     frame = cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
-    return numpy.zeros_like(frame)
+    return np.zeros_like(frame)
 
 
 async def create_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip):
@@ -449,9 +448,9 @@ def get_roi_gpu(image, stream):
 
 def get_roi_cpu(image):
     alpha_channel = image[..., 3]
-    visible_pixels = numpy.argwhere(alpha_channel > 0)
-    min_y, min_x = numpy.min(visible_pixels, axis=0).get()
-    max_y, max_x = numpy.max(visible_pixels, axis=0).get()
+    visible_pixels = np.argwhere(alpha_channel > 0)
+    min_y, min_x = np.min(visible_pixels, axis=0).get()
+    max_y, max_x = np.max(visible_pixels, axis=0).get()
     return [min_x, min_y, max_x, max_y]
 
 
@@ -492,7 +491,7 @@ def average_out_angle_gpu(angles):
 
 
 def get_angle_cpu(delta):
-    return (numpy.degrees(numpy.arctan2(delta[0], delta[1])) + 360 + 180) % 360
+    return (np.degrees(np.arctan2(delta[0], delta[1])) + 360 + 180) % 360
 
 
 def get_magnitude_gpu(delta, roi, stream):
@@ -503,8 +502,8 @@ def get_magnitude_gpu(delta, roi, stream):
     return magnitude
 
 def get_magnitude_cpu(delta, roi):
-    size = numpy.sqrt((roi[2] - roi[0]) ** 2 + (roi[3] - roi[1]) ** 2)
-    distance = numpy.sqrt(delta[0] ** 2 + delta[1] ** 2)
+    size = np.sqrt((roi[2] - roi[0]) ** 2 + (roi[3] - roi[1]) ** 2)
+    distance = np.sqrt(delta[0] ** 2 + delta[1] ** 2)
     return float(distance / size) + 1
 
 
@@ -547,218 +546,160 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
         foreground_folder = get_foreground_temp_image_folder(video_id)
         background_folder = get_background_temp_image_folder(video_id)
 
-        # Alle Frames laden
         foreground_frames = sorted(Path(foreground_folder).glob("*.png"))
         background_frames = sorted(Path(background_folder).glob("*.png"))
         if not foreground_frames or not background_frames:
             raise ValueError("No frames found in the specified folders.")
 
-        # Berechnung des Startindexes basierend auf dem negativen Offset
         start_frame_index = len(foreground_frames) - 1 + frame_offset
         if start_frame_index < 0 or start_frame_index >= len(foreground_frames):
             raise ValueError("Frame offset is out of range.")
 
-        # Hintergrund basierend auf `start_frame_index` laden
-        background_frame_path = str(background_frames[start_frame_index])
-        background_frame = cv2.imread(background_frame_path, cv2.IMREAD_UNCHANGED)
+        background_frame = cv2.imread(str(background_frames[start_frame_index]), cv2.IMREAD_UNCHANGED)
         background_frame = cv2.cvtColor(background_frame, cv2.COLOR_BGR2BGRA)
 
-        # Begrenze die Anzahl der Instanzen basierend auf den verfügbaren Frames
-        instance_count = instance_count - 1
-        max_instances = (start_frame_index + 1) // frame_skip
-        instance_count = min(instance_count, max_instances)
+        instance_count = min(instance_count - 1, (start_frame_index + 1) // frame_skip)
+        if instance_count <= 0:
+            raise ValueError("Not enough frames available for the given instance count and frame skip.")
 
+        alpha_values = []
         for i in range(instance_count):
-            # Berechnung des Frame-Indexes für den Vordergrund
-            frame_index = -(instance_count * frame_skip) + (i * frame_skip) + start_frame_index
-            if frame_index < 0 or frame_index >= len(foreground_frames):
-                continue  # Überspringe ungültige Indizes
-
-            foreground_frame = cv2.imread(str(foreground_frames[frame_index]), cv2.IMREAD_UNCHANGED)
-            if foreground_frame is None:
-                continue
-
-            # Transparenzberechnung
             if transparency_mode == "uniform":
                 alpha = int(255 * transparency_strength)
             elif transparency_mode == "gradient linear":
-                alpha = int(255 * ((i + 1) / instance_count) * transparency_strength)
-                alpha = max(1, min(255, alpha))  # Sicherstellen, dass Alpha mindestens 1 ist
+                alpha = max(1, min(255, int(255 * ((i + 1) / instance_count) * transparency_strength)))
             elif transparency_mode == "gradient quadratic":
                 alpha = int(255 * ((i + 1) / instance_count) ** 0.5 * transparency_strength)
+            alpha_values.append(alpha)
 
-            # Alpha-Kanal der Maske anpassen
+        # Parallelisiertes Laden der Bilder
+        frame_indices = [-(instance_count * frame_skip) + (i * frame_skip) + start_frame_index for i in range(instance_count) if -(instance_count * frame_skip) + (i * frame_skip) + start_frame_index >= 0]
+        frame_paths = list([foreground_frames[i] for i in frame_indices])
+        foreground_images = read_images(frame_paths)
+
+        for foreground_frame, alpha in zip(foreground_images, alpha_values):
+            if foreground_frame is None:
+                continue
+
             foreground_frame[:, :, 3] = (foreground_frame[:, :, 3] * (alpha / 255)).astype(np.uint8)
-
-            # Maske erstellen und Alpha-Kanal separat behandeln
             mask = foreground_frame[:, :, 3] > 0
-            foreground_alpha = foreground_frame[:, :, 3]
-            # Alpha-Blending anwenden
-            for c in range(3):  # Nur RGB-Kanäle
-                background_frame[:, :, c][mask] = (
-                        foreground_frame[:, :, c][mask] * (foreground_alpha[mask] / 255) +
-                        background_frame[:, :, c][mask] * (1 - foreground_alpha[mask] / 255)
-                ).astype(np.uint8)
+            foreground_alpha = foreground_frame[:, :, 3] / 255.0
 
-            # Alpha-Kanal aktualisieren (maximieren für additive Transparenz)
-            background_frame[:, :, 3][mask] = np.maximum(background_frame[:, :, 3][mask], foreground_alpha[mask])
+            background_frame[:, :, :3][mask] = (
+                foreground_frame[:, :, :3][mask] * foreground_alpha[mask, None] +
+                background_frame[:, :, :3][mask] * (1 - foreground_alpha[mask, None])
+            ).astype(np.uint8)
+            background_frame[:, :, 3][mask] = np.maximum(background_frame[:, :, 3][mask], foreground_frame[:, :, 3][mask])
 
-        # Verschobenen letzten Vordergrund-Frame hinzufügen
-        last_foreground_frame_path = str(foreground_frames[start_frame_index])
-        last_foreground_frame = cv2.imread(last_foreground_frame_path, cv2.IMREAD_UNCHANGED)
+        last_foreground_frame = cv2.imread(str(foreground_frames[start_frame_index]), cv2.IMREAD_UNCHANGED)
+        if last_foreground_frame is not None:
+            mask = last_foreground_frame[:, :, 3] > 0
+            background_frame[:, :, :3][mask] = last_foreground_frame[:, :, :3][mask]
+            background_frame[:, :, 3][mask] = 255
 
-        # Bereinigen der Segmentierungsmaske des letzten Frames
-        alpha_channel = last_foreground_frame[:, :, 3]
-        mask = alpha_channel > 0
-
-        # Entfernen des Alphakanals aus dem letzten Vordergrund-Frame
-        for c in range(3):
-            background_frame[:, :, c][mask] = last_foreground_frame[:, :, c][mask]
-
-        # Sicherstellen, dass der Alphakanal korrekt ist (für nicht maskierte Bereiche)
-        background_frame[:, :, 3][mask] = 255
-
-        # Speichern des resultierenden Bildes
         output_image = cv2.cvtColor(background_frame, cv2.COLOR_BGRA2RGBA)
-        output_image = Image.fromarray(output_image)
-        output_image.save(output_path, format="PNG")
+        Image.fromarray(output_image).save(output_path, format="PNG")
         print(f"Multiple instance effect created with offset {frame_offset} and saved to {output_path}")
 
     except Exception as e:
         print(f"Error creating multiple instance effect: {e}")
 
 
-def create_multiple_instance_effect_reversed(
-        video_id, output_path, instance_count, frame_skip, transparency_mode="uniform", transparency_strength=0.5,
-        frame_offset=0
-):
+
+def create_multiple_instance_effect_reversed(video_id, output_path, instance_count, frame_skip, transparency_mode="uniform",
+                                    transparency_strength=0.5, frame_offset=0):
     try:
         foreground_folder = get_foreground_temp_image_folder(video_id)
         background_folder = get_background_temp_image_folder(video_id)
 
-        # Alle Hintergrund- und Vordergrundframes laden
         background_frames = sorted(Path(background_folder).glob("*.png"))
         foreground_frames = sorted(Path(foreground_folder).glob("*.png"))
-
-        # Berechne das maximale Offset, das möglich ist
         max_offset = len(background_frames) - 1
         frame_offset = min(frame_offset, max_offset)
 
-        # Passe den Hintergrund basierend auf dem Offset an
-        background_frame_path = str(
-            background_frames[frame_offset])  # Hintergrund-Frame entsprechend dem Offset auswählen
-        background_frame = cv2.imread(background_frame_path, cv2.IMREAD_UNCHANGED)
+        background_frame = cv2.imread(str(background_frames[frame_offset]), cv2.IMREAD_UNCHANGED)
         background_frame = cv2.cvtColor(background_frame, cv2.COLOR_BGR2BGRA)
 
-        # Passe die Vordergrundframes basierend auf dem Offset an
-        foreground_frames = foreground_frames[frame_offset:]  # Frames entsprechend dem Offset reduzieren
+        foreground_frames = foreground_frames[frame_offset:]
+        instance_count = min(instance_count - 1, len(foreground_frames) // frame_skip)
+        if instance_count <= 0:
+            raise ValueError("Not enough frames available for the given instance count and frame skip.")
 
-        # Aktualisiere die maximale Anzahl der Instanzen
-        instance_count = instance_count - 1
-        instance_count = min(instance_count, len(foreground_frames) // frame_skip)
-
-        # Frames durchlaufen
+        alpha_values = []
         for i in range(instance_count, -1, -1):
-            frame_index = i * frame_skip
-            if frame_index >= len(foreground_frames):
-                continue  # Überspringe, falls der Index außerhalb des Bereichs liegt
-
-            foreground_frame = cv2.imread(str(foreground_frames[frame_index]), cv2.IMREAD_UNCHANGED)
-
-            # Transparenz für den ersten Frame auf volle Sichtbarkeit setzen
             if i == 0:
                 alpha = 255
             else:
-                # Transparenzberechnung für alle anderen Frames
                 if transparency_mode == "uniform":
                     alpha = int(255 * transparency_strength)
                 elif transparency_mode == "gradient linear":
-                    alpha = int(255 * (1 - (i / instance_count)) * transparency_strength)
-                    alpha = max(1, min(255, alpha))  # Sicherstellen, dass Alpha mindestens 1 ist
+                    alpha = max(1, min(255, int(255 * (1 - (i / instance_count)) * transparency_strength)))
                 elif transparency_mode == "gradient quadratic":
-                    offset = 0.7  # Steuert, wie sanft der Übergang startet
+                    offset = 0.7
                     progress = (i / instance_count) + offset
-                    alpha = int(255 * (1 - (progress ** 0.5 - offset ** 0.5)) * transparency_strength)
-                    alpha = max(1, min(255, alpha))  # Sicherstellen, dass Alpha mindestens 1 ist
+                    alpha = max(1, min(255, int(255 * (1 - (progress ** 0.5 - offset ** 0.5)) * transparency_strength)))
+            alpha_values.append(alpha)
 
-            print(f"Mode: {transparency_mode}, Alpha Value for instance {i + 1}/{instance_count + 1}: {alpha}")
+        frame_indices = [i * frame_skip for i in range(instance_count, -1, -1) if i * frame_skip < len(foreground_frames)]
+        frame_paths = list([foreground_frames[i] for i in frame_indices])
+        foreground_images = read_images(frame_paths)
 
-            # Alpha-Kanal der Maske anpassen
+        for foreground_frame, alpha in zip(foreground_images, alpha_values):
+            if foreground_frame is None:
+                continue
+
             foreground_frame[:, :, 3] = (foreground_frame[:, :, 3] * (alpha / 255)).astype(np.uint8)
-
-            # Debugging: Überprüfen der Alpha-Werte
-            print(f"Adjusted Alpha (Instance {i + 1}): {np.unique(foreground_frame[:, :, 3])}")
-
-            # Maske erstellen und Alpha-Kanal separat behandeln
             mask = foreground_frame[:, :, 3] > 0
-            foreground_alpha = foreground_frame[:, :, 3]
-            # Alpha-Blending anwenden
-            for c in range(3):  # Nur RGB-Kanäle
-                background_frame[:, :, c][mask] = (
-                        foreground_frame[:, :, c][mask] * (foreground_alpha[mask] / 255) +
-                        background_frame[:, :, c][mask] * (1 - foreground_alpha[mask] / 255)
-                ).astype(np.uint8)
+            foreground_alpha = foreground_frame[:, :, 3] / 255.0
 
-            # Alpha-Kanal aktualisieren (maximieren für additive Transparenz)
-            background_frame[:, :, 3][mask] = np.maximum(background_frame[:, :, 3][mask], foreground_alpha[mask])
+            background_frame[:, :, :3][mask] = (
+                foreground_frame[:, :, :3][mask] * foreground_alpha[mask, None] +
+                background_frame[:, :, :3][mask] * (1 - foreground_alpha[mask, None])
+            ).astype(np.uint8)
+            background_frame[:, :, 3][mask] = np.maximum(background_frame[:, :, 3][mask], foreground_frame[:, :, 3][mask])
 
-        # Speichern des resultierenden Bildes
         output_image = cv2.cvtColor(background_frame, cv2.COLOR_BGRA2RGBA)
-        output_image = Image.fromarray(output_image)
-        output_image.save(output_path, format="PNG")
+        Image.fromarray(output_image).save(output_path, format="PNG")
         print(f"Multiple instance effect (reversed) with offset {frame_offset} created and saved to {output_path}")
 
     except Exception as e:
         print(f"Error creating reversed multiple instance effect: {e}")
 
 
-def create_multiple_instance_effect_middle(
-        video_id, output_path, instance_count, frame_skip, transparency_mode="uniform", transparency_strength=0.5,
-        frame_offset=0
-):
+def create_multiple_instance_effect_middle(video_id, output_path, instance_count, frame_skip, transparency_mode="uniform",
+                                    transparency_strength=0.5, frame_offset=0):
     try:
         foreground_folder = get_foreground_temp_image_folder(video_id)
         background_folder = get_background_temp_image_folder(video_id)
 
-        # Alle Vordergrund- und Hintergrundframes laden
         foreground_frames = sorted(Path(foreground_folder).glob("*.png"))
         background_frames = sorted(Path(background_folder).glob("*.png"))
 
-        # Berechne den Referenzindex basierend auf dem Offset
         middle_index = len(foreground_frames) // 2
         reference_index = middle_index + frame_offset
-        reference_index = max(0, min(reference_index, len(foreground_frames) - 1))  # Begrenzen auf gültigen Bereich
+        reference_index = max(0, min(reference_index, len(foreground_frames) - 1))
 
-        # Hintergrund initialisieren
         background_frame_path = str(background_frames[reference_index])
         background_frame = cv2.imread(background_frame_path, cv2.IMREAD_UNCHANGED)
         background_frame = cv2.cvtColor(background_frame, cv2.COLOR_BGR2BGRA)
 
-        # Symmetrische Auswahl der Frames basierend auf dem Referenzframe und frame_skip
-        left_indices = list(range(reference_index - frame_skip, -1, -frame_skip))  # Links vom Referenzframe
-        right_indices = list(
-            range(reference_index + frame_skip, len(foreground_frames), frame_skip))  # Rechts vom Referenzframe
-
-        # Kombiniere beide Seiten und sortiere nach Entfernung vom Referenzframe
+        left_indices = list(range(reference_index - frame_skip, -1, -frame_skip))
+        right_indices = list(range(reference_index + frame_skip, len(foreground_frames), frame_skip))
         selected_indices = left_indices + right_indices
         selected_indices.sort(key=lambda x: abs(x - reference_index))
-
-        # Beschränke die Anzahl der ausgewählten Frames basierend auf instance_count
         selected_indices = selected_indices[:instance_count - 1]
 
-        # Frames entsprechend der Reihenfolge
-        sorted_frames = [foreground_frames[i] for i in selected_indices]
+        frame_paths = list([foreground_frames[i] for i in selected_indices])
+        sorted_frames = read_images(frame_paths)
 
-        # Füge die Frames ein
-        for frame_path in sorted_frames:
-            foreground_frame = cv2.imread(str(frame_path), cv2.IMREAD_UNCHANGED)
+        # Umkehren der Reihenfolge der Einfügung
+        for foreground_frame, frame_index in reversed(list(zip(sorted_frames, selected_indices))):
+            if foreground_frame is None:
+                continue
 
-            # Distanz zum Referenzframe
-            frame_index = foreground_frames.index(frame_path)
             distance_from_reference = abs(frame_index - reference_index)
             max_distance = max(reference_index, len(foreground_frames) - reference_index)
 
-            # Transparenzberechnung
             if transparency_mode == "uniform":
                 alpha = int(255 * transparency_strength)
             elif transparency_mode == "gradient linear":
@@ -770,15 +711,11 @@ def create_multiple_instance_effect_middle(
                 alpha = int(255 * (1 - (progress ** 0.5 - offset ** 0.5)) * transparency_strength)
                 alpha = max(1, min(255, alpha))
 
-            # Alpha-Kanal anpassen
             foreground_frame[:, :, 3] = (foreground_frame[:, :, 3] * (alpha / 255)).astype(np.uint8)
-
-            # Maske erstellen und Alpha-Blending anwenden
             mask = foreground_frame[:, :, 3] > 0
             foreground_alpha = foreground_frame[:, :, 3]
 
-            # Hintergrund und Vordergrund mischen
-            for c in range(3):  # Nur RGB-Kanäle
+            for c in range(3):
                 background_frame[:, :, c] = np.where(
                     mask,
                     foreground_frame[:, :, c] * (foreground_alpha / 255) +
@@ -786,17 +723,15 @@ def create_multiple_instance_effect_middle(
                     background_frame[:, :, c]
                 ).astype(np.uint8)
 
-            # Alpha-Kanal aktualisieren
             background_frame[:, :, 3] = np.where(
                 mask,
                 np.maximum(background_frame[:, :, 3], foreground_alpha),
                 background_frame[:, :, 3]
             ).astype(np.uint8)
 
-        # Zum Schluss den Referenzframe als Vordergrund einfügen
         reference_frame = cv2.imread(str(foreground_frames[reference_index]), cv2.IMREAD_UNCHANGED)
         mask = reference_frame[:, :, 3] > 0
-        for c in range(3):  # RGB-Kanäle
+        for c in range(3):
             background_frame[:, :, c] = np.where(
                 mask,
                 reference_frame[:, :, c] * (reference_frame[:, :, 3] / 255) +
@@ -809,10 +744,8 @@ def create_multiple_instance_effect_middle(
             background_frame[:, :, 3]
         ).astype(np.uint8)
 
-        # Ergebnis speichern
         output_image = cv2.cvtColor(background_frame, cv2.COLOR_BGRA2RGBA)
-        output_image = Image.fromarray(output_image)
-        output_image.save(output_path, format="PNG")
+        Image.fromarray(output_image).save(output_path, format="PNG")
         print(f"Multiple instance effect with reference offset {frame_offset} created and saved to {output_path}")
 
     except Exception as e:

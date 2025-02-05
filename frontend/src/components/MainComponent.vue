@@ -27,7 +27,10 @@ const toggleInfo = () => {
           <v-card-text>
             <p>Upload a video to start a new project or click on ‘projects’ to continue your existing projects.
               As soon as you have uploaded a video, you have the option to cut it.
-              In any case, make sure that the object that will later be on your final image is visible in the first frame. </p>
+              In any case, make sure that the object that will later be on your final image is visible in the first frame.
+              Video requirements: The effects only work with a static camera. Minor wobbles are okay,
+              but can distort the result. The better the quality of the video, the better the quality of the final image.
+              Be aware, this can also increase the editing time.</p>
           </v-card-text>
         </v-card>
       </div>
