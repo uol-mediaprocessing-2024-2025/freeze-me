@@ -5,7 +5,7 @@ import EffectSelection from "@/components/EffectSelection.vue";
 import VideoUpload from "@/components/VideoUpload.vue";
 import FinalEffects from "@/components/FinalEffects.vue";
 import SegmentationComponent from "@/components/SegmentationComponent.vue";
-import {onMounted, ref} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {store} from "@/store.js";
 
 const allSteps = ref(['video-upload', 'video-editing', 'segmentation', 'main-effects', 'after-effects'])
@@ -35,6 +35,15 @@ onMounted(() => {
   currentIndex.value += store.steps.mainEffect
   currentIndex.value += store.steps.afterEffect
 })
+
+watch(store.selectedVideoId, () => {
+  console.log("Found change in id")
+  if (store.selectedVideoId == null) {
+    console.log("go to upload")
+    currentIndex.value = 0;
+  }
+})
+
 </script>
 
 <template>

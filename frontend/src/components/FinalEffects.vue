@@ -99,7 +99,7 @@ const downloadImage = () => {
          Adjust the brightness, contrast and saturation and download your result. </p>
     </InfoButton>
     <v-card-title class="justify-center">
-      <h2>Final Effects</h2>
+      <h2>After Effects</h2>
     </v-card-title>
 
     <v-tabs v-model="selectedEffect" align-tabs="start">

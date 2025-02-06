@@ -60,7 +60,7 @@ const handleVideoClick = (video) => {
       <!-- Vuetify grid to organize images -->
     <v-row dense>
       <v-col v-for="(video, index) in videos" :key="index" class="d-flex child-flex" cols="12" sm="8" md="6" lg="4" xl="4">
-        <div class="rounded border pa-5 video-container d-flex flex-sm-column">
+        <div class="rounded border pa-5 video-container">
           <button class="delete-btn" @click.stop="deleteVideo(video)">❌</button>
           <img class="video" :src="video.thumbnail" @click="handleVideoClick(video)" alt="Thumbnail of video">
           <div class="progress-line">
@@ -104,15 +104,10 @@ const handleVideoClick = (video) => {
   margin: 5px
 }
 
-.current-step {
-  border: blue 1px solid;
-  border-radius: 0.3em;
-}
-
 .gallery {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .video-container {
@@ -121,12 +116,11 @@ const handleVideoClick = (video) => {
   cursor: pointer;
   transition: transform 0.3s ease-in-out;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  display: flex;
 }
 
 .video-container:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
 }
 
 .delete-btn {

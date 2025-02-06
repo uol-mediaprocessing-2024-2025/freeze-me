@@ -156,7 +156,7 @@ const applyMultipleInstancesEffect = async () => {
          Click on ‘continue’ to go to the last editing step. </p>
     </InfoButton>
     <v-card-title class="justify-center">
-      <h2>Effects</h2>
+      <h2>Main Effect</h2>
     </v-card-title>
 
     <v-tabs v-model="selectedEffect" align-tabs="start">

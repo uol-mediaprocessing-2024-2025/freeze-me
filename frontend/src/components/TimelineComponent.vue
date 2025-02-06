@@ -6,7 +6,6 @@ import axios from "axios";
 const segmentation = ref(store.steps.segmentation);
 const main_effect = ref(store.steps.mainEffect);
 const after_effect = ref(store.steps.afterEffect);
-const current_step = ref('')
 const video_id = ref(store.selectedVideoId)
 
 const props = defineProps(['modelValue'])
