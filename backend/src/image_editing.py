@@ -559,7 +559,7 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
         background_frame = cv2.cvtColor(background_frame, cv2.COLOR_BGR2BGRA)
 
         instance_count = min(instance_count - 1, (start_frame_index + 1) // frame_skip)
-        if instance_count <= 0:
+        if instance_count < 0:
             raise ValueError("Not enough frames available for the given instance count and frame skip.")
 
         alpha_values = []
@@ -622,7 +622,7 @@ def create_multiple_instance_effect_reversed(video_id, output_path, instance_cou
 
         foreground_frames = foreground_frames[frame_offset:]
         instance_count = min(instance_count - 1, len(foreground_frames) // frame_skip)
-        if instance_count <= 0:
+        if instance_count < 0:
             raise ValueError("Not enough frames available for the given instance count and frame skip.")
 
         alpha_values = []

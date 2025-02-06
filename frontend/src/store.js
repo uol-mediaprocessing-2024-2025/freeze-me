@@ -14,7 +14,6 @@ export const store = reactive({
     steps: {
         videoEditing: false,
         segmentation: false,
-        background: false,
         mainEffect: false,
         afterEffect: false
     }

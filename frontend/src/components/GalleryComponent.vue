@@ -48,15 +48,9 @@ const handleVideoClick = (video) => {
   store.selectedVideoId = video.id; // Set the selected image in the store
   store.steps.videoEditing = video.available_steps.indexOf('video-editing') >= 0
   store.steps.segmentation= video.available_steps.indexOf('segmentation') >= 0
-  store.steps.background= video.available_steps.indexOf('background') >= 0
   store.steps.mainEffect= video.available_steps.indexOf('main-effect') >= 0
   store.steps.afterEffect= video.available_steps.indexOf('after-effect') >= 0
-
-  let navigation = store.steps.segmentation ? "/segmentation" : "/"
-  navigation = store.steps.background ? "/" : navigation
-  navigation = store.steps.mainEffect ? "/effect-selection" : navigation
-  navigation = store.steps.afterEffect ? "/final-effects" : navigation
-  router.push(navigation)
+  router.push("/")
 };
 </script>
 

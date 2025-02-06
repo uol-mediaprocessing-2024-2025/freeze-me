@@ -3,7 +3,7 @@ import {ref, onMounted} from "vue";
 import {store} from "../store.js";
 import axios from "axios";
 import router from "@/router/index.js";
-import TimelineComponent from "@/components/TimelineComponent.vue";
+import InfoButton from "@/components/InfoButton.vue";
 
 const isLoading = ref(false);
 const loadingText = ref("");
@@ -21,7 +21,14 @@ const dotY = ref("0px")
 const dotSize = ref(40)
 const maskedImage = ref(false)
 const segmentedVideo = ref(null)
-const showInfo = ref(false);
+
+const props = defineProps(['modelValue'])
+const emit = defineEmits(['update:modelValue'])
+const nextPage = () => {
+  emit('update:modelValue', props.modelValue + 1)
+}
+
+let cachedFrame = []
 
 onMounted(async () => {
   isLoading.value = true;
@@ -38,13 +45,10 @@ onMounted(async () => {
       responseType: "json"
     })
 
+    cachedFrame = new Array(response.data).fill(null);
     frameNum.value = response.data - 1
     totalFrames.value = response.data - 1
-    if (store.segmentedFrame == null) {
-      await loadFrame()
-    } else {
-      displayedFrame.value = store.segmentedFrame
-    }
+    await loadFrame()
   } catch (e) {
     console.error("Failed to load first frame: ", e)
   }
@@ -65,11 +69,16 @@ const handleImageClick = (event) => {
   console.log("X: ", calcX, "Y: ", calcY)
 }
 
-const loadFrame = async () => {
-  const first_frame = await axios.get(`${store.apiUrl}/get-frame?video_id=` + videoId.value + '&frame_num=' + (frameNum.value - 1), {
+const loadFrame = async (value) => {
+  if (cachedFrame[value] != null) {
+    displayedFrame.value = cachedFrame[value];
+    return
+  }
+  const first_frame = await axios.get(`${store.apiUrl}/get-frame?video_id=` + videoId.value + '&frame_num=' + (frameNum.value), {
     responseType: 'blob'
   });
   displayedFrame.value = URL.createObjectURL(first_frame.data);
+  cachedFrame[value] = displayedFrame.value
   store.segmentedFrame = displayedFrame.value;
 }
 
@@ -103,11 +112,6 @@ const handleDotSubmit = async () => {
   }
 }
 
-// Function to toggle the info popup visibility
-const toggleInfo = () => {
-  showInfo.value = !showInfo.value;
-}
-
 const moveToSegmentationResult = async () => {
   isLoading.value = true
   loadingText.value = "Segmenting video...";
@@ -125,80 +129,62 @@ const moveToSegmentationResult = async () => {
   loadingText.value = "";
 }
 
-const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
-
 </script>
 
 <template>
-  <main>
-    <v-container class="d-flex align-center justify-center segmentation-container">
-      <!-- A card to contain the form and images -->
-      <TimelineComponent/>
-      <v-card elevation="2" class="pa-4 segmentation-card-container">
-        <div class="info-button-container">
-          <v-btn icon @click="toggleInfo" class="info-button">
-            <v-icon>mdi-information</v-icon>
-          </v-btn>
-          <v-card v-if="showInfo" class="info-popup" elevation="2">
-            <v-card-text>
-              <p>Click on the object that you want to apply an effect to. Then click on ‘set point’.
-                 If you have made a mistake, you can correct it by changing the point type.
-                 As soon as you are sure that you have selected the correct object, click on ‘continue’.
-                 The object will now be segmented from the video, this may take some time.
-                 As soon as the segmentation is complete, you can view the video with the segmentation mask.
-                 If you are satisfied click ‘continue’, if not start again.
-              </p>
-            </v-card-text>
-          </v-card>
-        </div>
-        <!-- Card title -->
-        <v-card-title class="justify-center">
-          <h2>Segmentation</h2>
-        </v-card-title>
-        <div v-if="!segmentedVideo" class="frame-wrapper">
-          <div class="wrapper">
-            <img v-if="displayedFrame" :src="displayedFrame" @click.stop="handleImageClick" class="segmentation-image" ismap/>
-            <img v-if="selectedX && selectedY" :src="pointType === 'Additive' ? 'src/assets/posDot.svg' : 'src/assets/negDot.svg'" class="select-dot" :width="dotSize" :height="dotSize"/>
-          </div>
-          <div v-if="!segmentedVideo" class="controls">
-            <v-slider
-              v-model="frameNum"
-              show-ticks="always"
-              tick-size="5"
-              thumb-label
-              :max="totalFrames"
-              :min="0"
-              :step="1"
-              class="pr-5"
-            ></v-slider>
-            <v-btn class="submit-button" @click="loadFrame">
-              Change Frame
-            </v-btn>
-            <v-switch v-model="pointType" :label="`PointType: ${pointType}`" false-value="Subtractive" true-value="Additive" class="point-selection" hide-details />
-            <v-btn class="submit-button" :disabled="!selectedX && !selectedY" @click="handleDotSubmit">
-              Set Point
-            </v-btn>
-            <v-btn class="submit-button" :disabled="!maskedImage" @click="moveToSegmentationResult">
-              Continue
-            </v-btn>
-          </div>
-          <!-- Loading overlay with centered spinner -->
-          <div v-if="isLoading" class="loading-overlay">
-            <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
-            <v-label>{{loadingText}}</v-label>
-          </div>
-        </div>
-        <div v-if="segmentedVideo" class="frame-wrapper">
-          <video v-if="segmentedVideo" :src="segmentedVideo" controls muted class="video">
-          </video>
-          <v-btn class="continue-button" @click="moveToEffectSelection">
-            Continue
-          </v-btn>
-        </div>
-      </v-card>
-    </v-container>
-  </main>
-
+  <v-card elevation="2" class="pa-4 segmentation-card-container">
+    <InfoButton>
+      <p>Click on the object that you want to apply an effect to. Then click on ‘set point’.
+         If you have made a mistake, you can correct it by changing the point type.
+         As soon as you are sure that you have selected the correct object, click on ‘continue’.
+         The object will now be segmented from the video, this may take some time.
+         As soon as the segmentation is complete, you can view the video with the segmentation mask.
+         If you are satisfied click ‘continue’, if not start again.
+      </p>
+    </InfoButton>
+    <!-- Card title -->
+    <v-card-title class="justify-center">
+      <h2>Segmentation</h2>
+    </v-card-title>
+    <div v-if="!segmentedVideo" class="frame-wrapper">
+      <div class="wrapper">
+        <img v-if="displayedFrame" :src="displayedFrame" @click.stop="handleImageClick" class="segmentation-image" ismap/>
+        <img v-if="selectedX && selectedY" :src="pointType === 'Additive' ? 'src/assets/posDot.svg' : 'src/assets/negDot.svg'" class="select-dot" :width="dotSize" :height="dotSize"/>
+      </div>
+      <div v-if="!segmentedVideo" class="controls">
+        <v-slider
+          v-model="frameNum"
+          show-ticks="always"
+          tick-size="5"
+          thumb-label
+          :max="totalFrames"
+          :min="0"
+          :step="1"
+          class="pr-5"
+          @update:modelValue="loadFrame"
+        ></v-slider>
+        <v-switch v-model="pointType" :label="`PointType: ${pointType}`" false-value="Subtractive" true-value="Additive" class="point-selection" hide-details />
+        <v-btn class="submit-button" :disabled="!selectedX && !selectedY" @click="handleDotSubmit">
+          Set Point
+        </v-btn>
+        <v-btn class="submit-button" :disabled="!maskedImage" @click="moveToSegmentationResult">
+          Continue
+        </v-btn>
+      </div>
+      <!-- Loading overlay with centered spinner -->
+      <div v-if="isLoading" class="loading-overlay">
+        <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
+        <v-label>{{loadingText}}</v-label>
+      </div>
+    </div>
+    <div v-if="segmentedVideo" class="frame-wrapper">
+      <video v-if="segmentedVideo" :src="segmentedVideo" controls muted class="video">
+      </video>
+      <v-btn class="continue-button" @click="nextPage">
+        Continue
+      </v-btn>
+    </div>
+  </v-card>
 </template>
 
 <style scoped>
@@ -286,36 +272,4 @@ const moveToEffectSelection = () => router.push({ path: 'effect-selection' });
   align-items: center;
   border-radius: 8px;
 }
-
-.info-button-container {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  flex-direction: column;
-  z-index: 15;
-}
-
-.info-button {
-  color: #ffffff !important;
-  background-color: #1976d2 !important;
-  z-index: 20;
-  margin-left: auto;
-}
-
-.info-popup {
-  position: absolute;
-  top: -5px;
-  right: 16px;
-  width: 600px;
-  padding: 16px;
-  z-index: 19;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-
 </style>

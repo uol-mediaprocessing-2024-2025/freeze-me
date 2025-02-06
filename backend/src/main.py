@@ -20,7 +20,8 @@ from video_editing import add_new_point_to_segmentation
 from video_editing import get_masked_video
 from video_editing import cut_video
 from video_editing import get_frame
-from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image, delete_project
+from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image, delete_project, \
+    get_upload_path
 from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed
 from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image
 from image_editing import save_background
@@ -59,6 +60,11 @@ async def upload_video(file: UploadFile = File(...)):
             status_code=500,
             content={"message": "Failed to get upload video", "error": str(e)},
         )
+
+@app.get("/get-video")
+async def get_video(video_id: str):
+    video_path = get_upload_path(video_id)
+    return FileResponse(video_path, media_type="video/mp4")
 
 @app.post("/upload-background")
 async def upload_background(file: UploadFile = File(...), video_id: str = Form(...)):
@@ -318,7 +324,6 @@ async def multiple_instance_effect(
         return {"status": "error", "message": str(e)}
 
 
-
 @app.get("/final-effects-preview")
 async def get_final_effects_preview(video_id: str, effect_type: str):
 
@@ -342,13 +347,16 @@ async def get_final_effects_preview(video_id: str, effect_type: str):
         )
 
 @app.post("/apply-final-effects")
-async def apply_final_effects(video_id: Annotated[str, Form()], brightness: Annotated[float, Form()],
+async def apply_final_effects(video_id: Annotated[str, Form()], effect_type: Annotated[str, Form()], brightness: Annotated[float, Form()],
                               contrast: Annotated[float, Form()], saturation: Annotated[float, Form()]):
 
     try:
+        if effect_type == "motion-blur":
+            image_path = get_motion_blur_image(video_id, "motion_blur.png")
+        else:
+            image_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
         set_current_step(video_id, Step.AFTER_EFFECT)
-        output_folder = "output_folder_path"  # implement outoutfolder
-        output_image_path = process_effect_request(video_id, brightness, contrast, saturation, output_folder)
+        output_image_path = process_effect_request(video_id, brightness, contrast, saturation, image_path)
         return FileResponse(output_image_path, media_type="image/png")
     except Exception as e:
         return JSONResponse(

@@ -43,7 +43,7 @@ Recommended, but optional:
    conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
    ```
    > Download a checkpoint and config from and add them to the config- and checkpoints
-   > folder inside the src folder.
+   > folder inside the backend folder.
    ```
    https://github.com/facebookresearch/sam2?tab=readme-ov-file#sam-21-checkpoints
    ```

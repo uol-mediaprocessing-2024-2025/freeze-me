@@ -48,7 +48,6 @@ print("FlashAttention available:", torch.backends.cuda.flash_sdp_enabled())
 
 if device.type == "cuda":
     torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
-    # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
     if torch.cuda.get_device_properties(0).major >= 8:
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
@@ -66,7 +65,8 @@ import shutil
 
 inference_state: {}
 fps = 0
-
+points = []
+labels = []
 
 async def save_video(file: UploadFile):
     video_id = uuid.uuid4().hex.__str__() + Path(file.filename).suffix
@@ -87,19 +87,20 @@ async def get_video_details(video_id):
     try:
         path = get_upload_path(video_id)
         image_folder = get_images_path(video_id)
-        total_frames = len(os.listdir(image_folder))
         details = ffmpeg.probe(path.__str__(), cmd="static_ffprobe")
-        details["total_frames"] = total_frames
-        global fps
         video_stream = None
         for stream in details["streams"]:
             if stream["codec_type"] == "video":
                 video_stream = stream
                 break
+        global fps
+        total_frames = len(os.listdir(image_folder))
+        details["total_frames"] = total_frames
         fps_string = video_stream["r_frame_rate"]
         slash = fps_string.find("/")
         fps = round(float(fps_string[0:slash]) / float(fps_string[slash + 1:]), 2)
         print("FPS: ", fps)
+        print("Total frames: ", total_frames)
         return details
     except Exception as e:
         print(e)
@@ -111,8 +112,13 @@ async def get_video_details(video_id):
 
 async def initialize_segmentation(video_id):
     try:
-        global inference_state
+        global inference_state, points, labels
         image_folder = get_images_path(video_id)
+        total_frames = len(os.listdir(image_folder))
+        points = [[]] * total_frames
+        labels = [[]] * total_frames
+        print(points)
+        print(labels)
         inference_state = predictor.init_state(video_path=image_folder.__str__())
     except Exception as e:
         print(e)
@@ -130,10 +136,9 @@ async def get_frame(video_id, frame_id):
 
 async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num):
     try:
-        points = []
-        labels = []
-        points.append([point_x, point_y])
-        labels.append(point_type)
+        global points, labels
+        points[frame_num].append([point_x, point_y])
+        labels[frame_num].append(point_type)
         print(points, labels)
         output_path = get_preview_mask_frames_folder_path(video_id)
         with sv.ImageSink(target_dir_path=output_path.__str__()) as sink:
@@ -141,8 +146,8 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, 
                 inference_state=inference_state,
                 frame_idx=frame_num,
                 obj_id=1,
-                points=points,
-                labels=labels,
+                points=points[frame_num],
+                labels=labels[frame_num],
             )
             mask_data = (out_mask_logits > 0.0).cpu().numpy()
             n, x, h, w = mask_data.shape
@@ -166,8 +171,6 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, 
 async def get_masked_video(video_id):
     try:
         output_path = get_masked_video_path(video_id)
-        if output_path.exists():
-            return output_path.__str__()
         image_path = get_images_path(video_id)
         video_path = get_upload_path(video_id)
         video_info = sv.VideoInfo.from_video_path(video_path.__str__())
