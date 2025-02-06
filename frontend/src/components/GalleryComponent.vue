@@ -118,9 +118,17 @@ const handleVideoClick = (video) => {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+.video-container .delete-btn{
+  display: none;
+}
+
 .video-container:hover {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
   transform: scale(1.1);
+}
+
+.video-container:hover .delete-btn{
+  display: flex;
 }
 
 .delete-btn {
