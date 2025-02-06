@@ -65,16 +65,16 @@ const handleVideoClick = (video) => {
           <img class="video" :src="video.thumbnail" @click="handleVideoClick(video)" alt="Thumbnail of video">
           <div class="progress-line">
             <img :src="video.available_steps.indexOf('video-editing') >= 0 ? 'src/assets/workflow/video-cut-available.svg' : 'src/assets/workflow/video-cut-unavailable.svg'"
-                 class="progress-icon" :class="video.current_step == 'video-editing' ? 'current-step' : '' ">
+                 class="progress-icon">
             <span class="divider"></span>
             <img :src="video.available_steps.indexOf('segmentation') >= 0 ? 'src/assets/workflow/segmentation-available.svg' : 'src/assets/workflow/segmentation-unavailable.svg'"
-                 class="progress-icon" :class="video.current_step == 'segmentation' ? 'current-step' : '' ">
+                 class="progress-icon">
             <span class="divider"></span>
             <img :src="video.available_steps.indexOf('main-effect') >= 0 ? 'src/assets/workflow/main-effect-available.svg' : 'src/assets/workflow/main-effect-unavailable.svg'"
-                 class="progress-icon" :class="video.current_step == 'main-effect' ? 'current-step' : '' ">
+                 class="progress-icon">
             <span class="divider"></span>
             <img :src="video.available_steps.indexOf('after-effect') >= 0 ? 'src/assets/workflow/after-effect-available.svg' : 'src/assets/workflow/after-effect-unavailable.svg'"
-                 class="progress-icon" :class="video.current_step == 'after-effect' ? 'current-step' : '' ">
+                 class="progress-icon">
           </div>
         </div>
       </v-col>
