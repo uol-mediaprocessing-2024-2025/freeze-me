@@ -5,8 +5,6 @@ import cv2
 import numpy as np
 import os
 
-from matplotlib import pyplot as plt
-
 
 def adjust_brightness_contrast_saturation(image_path, brightness, contrast, saturation, output_path):
 

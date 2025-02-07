@@ -86,7 +86,7 @@ const changeBackgroundType = async () => {
             Please select one of the following Background-Types and follow the given instructions.
           </v-card-text>
 
-          <v-radio-group v-model="backgroundType" @change="changeBackgroundType" inline>
+          <v-radio-group v-model="backgroundType" @change="changeBackgroundType" class="px-3" inline>
             <v-radio label="Video Frame" class="radio-button" value="video_frame"></v-radio>
             <v-radio label="Transparent" class="radio-button" value="transparent"></v-radio>
             <v-radio label="Custom" class="radio-button" value="custom"></v-radio>

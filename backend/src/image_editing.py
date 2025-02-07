@@ -195,17 +195,7 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
             print("--- Blurring: %s seconds ---" % (blur_time - prep_time))
             print("---------------------")
 
-            # save blurred frames
-            image_num = 0
-            blurred_paths = []
-            for b in range(i, batch_size, 1 + frame_skip):
-                frame_name = str(b).zfill(5) + ".png"
-                blurred_paths.append(get_motion_blur_folder(video_id).joinpath(frame_name).__str__())
-                image_num += 1
-            write_images(blurred_paths, blurred_batch_gpu)
             blurred_batch_gpu.append(batch_gpu[-1])
-            save_time = timer()
-            print("--- Saving: %s seconds ---" % (save_time - blur_time))
             print("---------------------")
         else:
             blurred_batch_gpu = batch_gpu

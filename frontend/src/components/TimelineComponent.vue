@@ -27,6 +27,15 @@ onMounted(async () => {
 })
 
 watch(
+  store.steps,
+  () => {
+    segmentation.value = store.steps.segmentation
+    main_effect.value = store.steps.mainEffect
+    after_effect.value = store.steps.afterEffect
+  }
+)
+
+watch(
   () => store.selectedVideoId,
   async (newVideoId) => {
     if (newVideoId == null) {
