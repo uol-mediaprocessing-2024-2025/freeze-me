@@ -32,6 +32,9 @@ coverage
 
 # Other
 *.mp4
+*.yaml
+*.pt
+!/notebook/files/sample_video.mp4
 /backend/src/checkpoints
 /backend/src/configs
 /backend/notebook/.ipynb_checkpoints

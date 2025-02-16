@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-import shutil
 
 FOLDER_PATH = "videos"
 IMAGE_PATH = "images"
