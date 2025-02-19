@@ -562,7 +562,7 @@ def create_multiple_instance_effect(video_id, output_path, instance_count, frame
                 alpha = int(255 * ((i + 1) / instance_count) ** 0.5 * transparency_strength)
             alpha_values.append(alpha)
 
-        # Parallelisiertes Laden der Bilder
+        # paralized loading of frames
         frame_indices = [-(instance_count * frame_skip) + (i * frame_skip) + start_frame_index for i in range(instance_count) if -(instance_count * frame_skip) + (i * frame_skip) + start_frame_index >= 0]
         frame_paths = list([foreground_frames[i] for i in frame_indices])
         foreground_images = read_images(frame_paths)
@@ -682,7 +682,7 @@ def create_multiple_instance_effect_middle(video_id, output_path, instance_count
         frame_paths = list([foreground_frames[i] for i in selected_indices])
         sorted_frames = read_images(frame_paths)
 
-        # Umkehren der Reihenfolge der Einfügung
+        # reverse insertion of frames
         for foreground_frame, frame_index in reversed(list(zip(sorted_frames, selected_indices))):
             if foreground_frame is None:
                 continue
