@@ -68,6 +68,7 @@ fps = 0
 points = []
 labels = []
 
+
 async def save_video(file: UploadFile):
     video_id = uuid.uuid4().hex.__str__() + Path(file.filename).suffix
     create_all_paths(video_id)
@@ -124,6 +125,7 @@ async def initialize_segmentation(video_id):
         print(e)
         print(e.__traceback__)
         print(traceback.format_exc())
+
 
 async def get_frame(video_id, frame_id):
     try:
@@ -183,7 +185,8 @@ async def get_masked_video(video_id):
         temp_file = get_temp_file_path(video_id)
         frames = read_images(frames_paths)
         with sv.VideoSink(temp_file.__str__(), video_info=video_info) as sink:
-            for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state, start_frame_idx=0):
+            for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state,
+                                                                                            start_frame_idx=0):
                 frame = frames[out_frame_idx]
                 masks = (out_mask_logits > 0.0).cpu().numpy()
                 n, x, h, w = masks.shape
@@ -233,13 +236,6 @@ async def get_masked_video(video_id):
 
 
 async def cut_video(video_id: str, start_time: float, end_time: float):
-    """
-    Schneidet ein Video auf den angegebenen Zeitraum zu und speichert das geschnittene Video unter einer neuen, zufälligen ID.
-    :param video_id: Die ID des hochgeladenen Videos
-    :param start_time: Startzeit in Sekunden
-    :param end_time: Endzeit in Sekunden
-    :return: Der Name des geschnittenen Videos
-    """
     try:
         # Pfade initialisieren
         video_folder = get_video_folder_path(video_id)
@@ -277,7 +273,7 @@ async def cut_video(video_id: str, start_time: float, end_time: float):
         for f in os.listdir(image_folder):
             os.remove(os.path.join(image_folder, f))
         ffmpeg.input(original_video_path).output(image_folder.__str__() + "/%05d.jpeg", start_number=0,
-                                  **{'q:v': '2'}).overwrite_output().run(quiet=True)
+                                                 **{'q:v': '2'}).overwrite_output().run(quiet=True)
         return new_video_file_name
 
     except Exception as e:
@@ -286,13 +282,7 @@ async def cut_video(video_id: str, start_time: float, end_time: float):
 
 
 async def save_cut_video(file_path: Path, video_id: str):
-    """
-    Speichert das Video unter einer zufälligen ID.
-    :param file_path: Pfad zur temporären Videodatei
-    :return: Der Name der gespeicherten Datei
-    """
     path = get_upload_path(video_id)
 
-    # Die temporäre Datei unter der neuen ID speichern
-    shutil.copy(file_path, path)  # Kopieren statt verschieben, um die temporäre Datei nicht zu verlieren
+    shutil.copy(file_path, path)
     return path
