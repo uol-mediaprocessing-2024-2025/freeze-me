@@ -1,7 +1,6 @@
-# WebApp Base Project
+# Freeze Me!
+Freeze Me! is a project, in which we want to create dynamic, motion-illustrative images from video clips by isolating moving objects and visualizing their motion.
 
-This project is a simple web application consisting of a **frontend** (using Vue 3 and Vuetify) and a **backend** (using FastAPI).  
-The frontend lets you upload images and apply a blur effect to them.
 
 ## Prerequisites
 
