@@ -81,33 +81,6 @@ Recommended, but optional:
 
 ---
 
-## Project Structure
-
-```
-webapp-base-project/
-├─ backend/
-│  ├─ requirements.txt            # Backend dependencies
-│  └─ src/
-│     ├─ image_processing.py       # Image processing logic (e.g., blur effect)
-│     └─ main.py                   # FastAPI entry point
-├─ frontend/
-│  ├─ index.html                   # HTML entry point for the frontend
-│  ├─ package.json                 # Frontend dependencies and project details
-│  ├─ src/
-│  │  ├─ App.vue                   # Root Vue component
-│  │  ├─ assets/                   # Static assets like CSS, images
-│  │  ├─ components/               # Vue components
-│  │  │  ├─ GalleryComponent.vue   # Component for displaying image gallery
-│  │  │  └─ MainComponent.vue      # Component for image upload and blur functionality
-│  │  ├─ main.js                   # Frontend entry point
-│  │  ├─ router/
-│  │  │  └─ index.js               # Vue Router configuration
-│  │  ├─ store.js                  # Global store for state management
-│  │  └─ views/                    # Vue views (pages)
-│  └─ vite.config.js               # Vite configuration for building the frontend
-└─ README.md                       
-```
-
 ## Useful links
 - **Vue3 Introduction:** https://vuejs.org/guide/introduction.html
 - **Vuetify Documentation:** https://vuetifyjs.com/en/components/buttons/#usage
