@@ -31,7 +31,7 @@ kernel_list = np.zeros((max_movement, np.floor(180 / angle_range).astype(int)), 
 kernel_list[:, :] = None
 
 def get_device():
-    return torch.device("cuda" if torch.cuda.is_available() and cupy.cuda.is_available() else "cpu")
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 async def save_background(file: UploadFile, video_id):
@@ -90,7 +90,7 @@ async def create_motion_blur_image(video_id, blur_strength, blur_transparency, f
     else:
         generate_blur = motion_blur_data[0] != blur_strength or motion_blur_data[1] != blur_transparency or \
                         motion_blur_data[2] != frame_skip
-    if device.__eq__("cuda"):
+    if device == "cuda":
         path = gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, generate_blur)
     else:
         path = generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip)
@@ -338,7 +338,9 @@ def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame
     image_path = get_motion_blur_image(video_id, "motion_blur.png")
     cv2.imwrite(image_path, base_image)
     final_image = Image.open(image_path)
-    background = Image.open(get_motion_blur_image(video_id, "background.png"))
+    background_array = get_background(video_id, len(frames_paths) - 1)
+    background_array = cv2.cvtColor(background_array, cv2.COLOR_BGRA2RGBA)
+    background = Image.fromarray(background_array)
     final_image.paste(background, (0, 0))
 
     # Pre calculate kernels if not yet exists
