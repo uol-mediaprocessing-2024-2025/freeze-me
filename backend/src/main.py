@@ -56,6 +56,9 @@ async def upload_video(file: UploadFile = File(...)):
         create_project(video_id)
         return JSONResponse(status_code=200, content=video_id)
     except Exception as e:
+        print(e.__str__())
+        print(e.__traceback__)
+        print(traceback.format_exc())
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to get upload video", "error": str(e)},

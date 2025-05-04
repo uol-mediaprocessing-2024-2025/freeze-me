@@ -72,11 +72,25 @@ labels = []
 async def save_video(file: UploadFile):
     video_id = uuid.uuid4().hex.__str__() + Path(file.filename).suffix
     create_all_paths(video_id)
+    temp_path = get_temp_file_path(video_id)
     path = get_upload_path(video_id)
     video_data = io.BytesIO(await file.read())
-    with open(path, "wb") as f:
+    with open(temp_path, "wb") as f:
         f.write(video_data.getbuffer())
 
+    print("saved file at: ", temp_path.__str__())
+
+    ffmpeg.input(temp_path).output(
+        path.__str__(),
+        vf='scale=480:-2',
+        vcodec='libx264',
+        crf=18,
+        preset='slow',
+        an=None,
+        movflags='faststart'
+    ).overwrite_output().run(quiet=True)
+    print("converted video and saved at: ", path.__str__())
+    temp_path.unlink()
     image_folder = get_images_path(video_id)
     ffmpeg.input(path).output(image_folder.__str__() + "/%05d.jpeg", start_number=0,
                               **{'q:v': '2'}).overwrite_output().run(quiet=True)
