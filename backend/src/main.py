@@ -23,7 +23,7 @@ from video_editing import get_frame
 from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image, delete_project, \
     get_upload_path
 from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed
-from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image
+from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image, create_action_line_effect
 from image_editing import save_background
 from image_effects import process_effect_request
 
@@ -326,6 +326,29 @@ async def multiple_instance_effect(
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+
+@app.get("/effect/action-lines/")
+async def action_line_effect(
+    video_id: str,
+    thickness: int,
+    count: int,
+    smoothing_factor: int,
+    color: str
+):
+    try:
+        create_all_paths(video_id)
+        create_action_line_effect(video_id, thickness, count, smoothing_factor, color)
+        output_path = get_motion_blur_image(video_id, "action_line.png")
+
+        if not output_path.exists():
+            raise FileNotFoundError(f"Das Bild wurde nicht unter {output_path} gespeichert.")
+
+        return FileResponse(output_path, media_type="image/png")
+    except Exception as e:
+        print(e)
+        print(e.__traceback__)
+        print(traceback.print_exception(type(e), e, e.__traceback__))
+        return {"status": "error", "message": str(e)}
 
 @app.get("/final-effects-preview")
 async def get_final_effects_preview(video_id: str, effect_type: str):

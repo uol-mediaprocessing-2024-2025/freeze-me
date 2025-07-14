@@ -4,6 +4,7 @@ import os
 from concurrent.futures.thread import ThreadPoolExecutor
 from pathlib import Path
 from timeit import default_timer as timer
+from scipy.signal import savgol_filter
 
 import cupy
 import cupyx
@@ -11,7 +12,7 @@ import cv2
 import numpy as np
 import supervision as sv
 import torch
-from PIL import Image
+from PIL import Image, ImageColor
 from cupyx.scipy import ndimage
 from fastapi import UploadFile
 
@@ -326,6 +327,33 @@ def alpha_composite_gpu(foreground, background):
     out_image = cupy.dstack((out_rgb, out_alpha * 255)).astype(cupy.uint8)
     return out_image
 
+def alpha_composite_cpu(foreground, background):
+    fg = np.array(foreground, dtype=np.float32)
+    bg = np.array(background, dtype=np.float32)
+
+    print("bg max alpha:", np.max(background[:, :, 3]))
+    print("fg max alpha:", np.max(foreground[:, :, 3]))
+
+    fg_rgb = fg[:, :, :3]
+    fg_alpha = fg[:, :, 3] / 255
+    bg_rgb = bg[:, :, :3]
+    bg_alpha = bg[:, :, 3] / 255
+
+    out_alpha = fg_alpha + bg_alpha * (1 - fg_alpha)
+    out_alpha_mask = out_alpha > 0
+    out_rgb = np.zeros_like(fg_rgb)
+
+    for c in range(3):
+        out_rgb[:, :, c] = (
+                fg_rgb[:, :, c] * fg_alpha +
+                bg_rgb[:, :, c] * bg_alpha * (1 - fg_alpha)
+        )
+    epsilon = 1e-5
+    out_rgb = np.divide(out_rgb, out_alpha[..., np.newaxis] + epsilon)
+
+    out_image = np.dstack((out_rgb, np.ones_like(bg_alpha) * 255)).astype(np.uint8)
+    return out_image
+
 
 def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip):
     frames_paths = sorted(sv.list_files_with_extensions(directory=get_foreground_temp_image_folder(video_id).__str__(),
@@ -441,8 +469,8 @@ def get_roi_gpu(image, stream):
 def get_roi_cpu(image):
     alpha_channel = image[..., 3]
     visible_pixels = np.argwhere(alpha_channel > 0)
-    min_y, min_x = np.min(visible_pixels, axis=0).get()
-    max_y, max_x = np.max(visible_pixels, axis=0).get()
+    min_y, min_x = np.min(visible_pixels, axis=0)
+    max_y, max_x = np.max(visible_pixels, axis=0)
     return [min_x, min_y, max_x, max_y]
 
 
@@ -453,9 +481,9 @@ def get_center_gpu(roi, stream):
     return [center_x, center_y]
 
 def get_center_cpu(roi):
-    center_x = ((roi[2] + roi[0]) / 2).item()
-    center_y = ((roi[3] + roi[1]) / 2).item()
-    return [center_x, center_y]
+    center_x = ((roi[2] + roi[0]) / 2)
+    center_y = ((roi[3] + roi[1]) / 2)
+    return np.array([center_x, center_y])
 
 
 def get_delta_gpu(center, next_center, stream):
@@ -742,3 +770,105 @@ def create_multiple_instance_effect_middle(video_id, output_path, instance_count
 
     except Exception as e:
         print(f"Error creating multiple instance effect: {e}")
+
+
+def create_action_line_effect(video_id, thickness, count, smoothing_factor=7, color="#FFFFFFFF"):
+    # load foregrounds
+    print(color)
+    result_path = get_motion_blur_image(video_id, "action_line.png")
+    frame_folder_path = get_foreground_temp_image_folder(video_id).__str__()
+    frames_paths = sorted(sv.list_files_with_extensions(directory=frame_folder_path, extensions=["png"]))
+
+    used_frame_paths = []
+    last_frame_id = len(frames_paths) - 1
+    for i in range(last_frame_id, -1, -1):
+        print(i)
+        used_frame_paths.insert(0, frames_paths[i].__str__())
+    print(last_frame_id)
+    used_frames = read_images(used_frame_paths)
+
+    # calculate points
+    with ThreadPoolExecutor() as executor:
+        rois = list(executor.map(get_roi_cpu, used_frames))
+        print("finished rois")
+        centers = list(executor.map(get_center_cpu, rois))
+        print("finished centers")
+    print(0)
+    # smooth points
+    if smoothing_factor > 1:
+        centers_smoothed = smooth_points_savgol(centers, window_length=smoothing_factor)
+    else:
+        centers_smoothed = centers
+    smoothed_points = catmull_rom_spline(centers_smoothed, count, 0.5)
+    print(1)
+
+    # create lines
+    resulting_image = get_background(video_id, last_frame_id)
+
+    r = int(color[1:3], 16)
+    g = int(color[3:5], 16)
+    b = int(color[5:7], 16)
+    a = min(float(int(color[7:9], 16)) / 255, 0.999)
+    print(r, g, b, a, 1-a)
+
+    overlay = resulting_image.copy()
+
+    for i in range(1, len(smoothed_points)):
+        pt1 = smoothed_points[i - 1]
+        pt2 = smoothed_points[i]
+        cv2.line(overlay, pt1, pt2, (b, g, r, a), thickness)
+
+    cv2.addWeighted(overlay, a, resulting_image, 1-a, 0, resulting_image)
+
+    # Sicherstellen, dass background und foreground 4 Kanäle haben
+    if resulting_image.shape[2] == 3:
+        print("AAAAAAAAAAAAAAAAAAAA")
+        h, w = resulting_image.shape[:2]
+        alpha = np.full((h, w, 1), 255, dtype=np.uint8)
+        resulting_image = np.concatenate((resulting_image, alpha), axis=2)
+
+    resulting_image = alpha_composite_cpu(cv2.cvtColor(used_frames[last_frame_id], cv2.COLOR_BGR2BGRA), resulting_image)
+
+    cv2.imwrite(result_path.__str__(), resulting_image)
+
+def draw_vectors(x_size, y_size, vectors):
+    image = np.zeros((x_size, y_size, 4), dtype=np.uint8)
+    for start, end in vectors:
+        cv2.line(image, start, end, (0, 0, 0, 255), 1)
+    return image
+
+def catmull_rom_spline(points, count=20, alpha=0.5):
+    def tj(ti, pi, pj):
+        dist = np.linalg.norm(pj - pi)
+        return ti + (dist ** alpha if dist > 1e-5 else 1e-5)  # Vermeide Null-Division
+
+    result = []
+    for i in range(1, len(points) - 2):
+        p0, p1, p2, p3 = points[i-1], points[i], points[i+1], points[i+2]
+        t0 = 0
+        t1 = tj(t0, p0, p1)
+        t2 = tj(t1, p1, p2)
+        t3 = tj(t2, p2, p3)
+
+        for t in np.linspace(t1, t2, count):
+            try:
+                A1 = (t1 - t)/(t1 - t0) * p0 + (t - t0)/(t1 - t0) * p1
+                A2 = (t2 - t)/(t2 - t1) * p1 + (t - t1)/(t2 - t1) * p2
+                A3 = (t3 - t)/(t3 - t2) * p2 + (t - t2)/(t3 - t2) * p3
+
+                B1 = (t2 - t)/(t2 - t0) * A1 + (t - t0)/(t2 - t0) * A2
+                B2 = (t3 - t)/(t3 - t1) * A2 + (t - t1)/(t3 - t1) * A3
+
+                C = (t2 - t)/(t2 - t1) * B1 + (t - t1)/(t2 - t1) * B2
+                if np.all(np.isfinite(C)):
+                    result.append(C.astype(int))
+            except ZeroDivisionError:
+                continue  # Ignoriere Problem-Segmente
+
+    return np.array(result)
+
+def smooth_points_savgol(points, window_length=7, polyorder=2):
+    points = np.array(points, dtype=np.float32)
+    x = savgol_filter(points[:, 0], window_length, polyorder)
+    y = savgol_filter(points[:, 1], window_length, polyorder)
+    return np.stack((x, y), axis=-1)

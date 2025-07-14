@@ -82,7 +82,6 @@ async def save_video(file: UploadFile):
 
     ffmpeg.input(temp_path).output(
         path.__str__(),
-        vf='scale=480:-2',
         vcodec='libx264',
         crf=18,
         preset='slow',

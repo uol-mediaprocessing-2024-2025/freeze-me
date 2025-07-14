@@ -1,6 +1,6 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
-import { store } from "@/store.js";
+import {onMounted, ref, watch} from "vue";
+import {store} from "@/store.js";
 import router from "@/router/index.js";
 import axios from "axios";
 import BackgroundSelection from "@/components/BackgroundSelection.vue";
@@ -27,6 +27,12 @@ const frameOffsetMax = ref(100); // Maximaler Wert für den Offset
 const showPreviewModal = ref(false);
 const previewImageSrc = ref("");
 
+const thicknessValue = ref(2); // Anzahl der Instanzen für Multiple Instances
+const countValue = ref(20); // Anzahl der Instanzen für Multiple Instances
+const smoothingFactor = ref(7); // Anzahl der Instanzen für Multiple Instances
+const actionLinesPreview = ref(""); // Vorschau für Multiple Instances
+const colorPickerValue = ref("#FFFFFFFF"); // Vorschau für Multiple Instances
+
 const props = defineProps(['modelValue'])
 const emit = defineEmits(['update:modelValue'])
 const nextPage = () => {
@@ -51,7 +57,7 @@ onMounted(async () => {
   isLoading.value = true;
   videoId.value = store.selectedVideoId;
   if (videoId.value == null) {
-    router.push({ path: "/" });
+    router.push({path: "/"});
     return;
   }
   if (store.selectedBackground != null) {
@@ -138,6 +144,43 @@ const applyMultipleInstancesEffect = async () => {
   }
 };
 
+const generateActionLinesEffect = async () => {
+  if (!videoId.value) {
+    alert("Bitte wählen Sie ein Video aus.");
+    return;
+  }
+
+  isLoading.value = true;
+  loadingText.value = "Generating Action Lines Effect..."
+
+  try {
+    const response = await axios.get(
+        `${store.apiUrl}/effect/action-lines/`,
+        {
+          params: {
+            video_id: videoId.value,
+            thickness: thicknessValue.value,
+            count: countValue.value,
+            smoothing_factor: smoothingFactor.value,
+            color: colorPickerValue.value.length > 7 ? colorPickerValue.value : colorPickerValue.value + "FF"
+          },
+          responseType: "blob",
+        }
+    );
+
+    actionLinesPreview.value = URL.createObjectURL(response.data);
+  } catch (error) {
+    console.error(
+        "Fehler beim Anwenden des Multiple Instances Effekts:",
+        error
+    );
+    alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
+  } finally {
+    isLoading.value = false;
+    loadingText.value = ""
+  }
+};
+
 </script>
 
 <template>
@@ -145,15 +188,15 @@ const applyMultipleInstancesEffect = async () => {
     <!-- Info Button and Popup -->
     <InfoButton>
       <p>Select an effect. The motion blur uses the last available frame and shows the movement of the object
-         seen in the video using a blur effect. It is necessary to upload a background, either use the last
-         background frame of the video (found in the project folder) or use your own background.
-         You cannot currently upload your own background for the Multiple Instances effect.
-         You have the choice between three different visualisations of the instances and can use the offset
-         slider to set where the instances can be located. You can also adjust the number of instances and the
-         distance between them (frameskip). If you select more instances than are possible with your settings,
-         the remaining instances will be cut off.
-         Click on ‘generate image’ to display a preview of the image.
-         Click on ‘continue’ to go to the last editing step. </p>
+        seen in the video using a blur effect. It is necessary to upload a background, either use the last
+        background frame of the video (found in the project folder) or use your own background.
+        You cannot currently upload your own background for the Multiple Instances effect.
+        You have the choice between three different visualisations of the instances and can use the offset
+        slider to set where the instances can be located. You can also adjust the number of instances and the
+        distance between them (frameskip). If you select more instances than are possible with your settings,
+        the remaining instances will be cut off.
+        Click on ‘generate image’ to display a preview of the image.
+        Click on ‘continue’ to go to the last editing step. </p>
     </InfoButton>
     <v-card-title class="justify-center">
       <h2>Main Effect</h2>
@@ -162,6 +205,7 @@ const applyMultipleInstancesEffect = async () => {
     <v-tabs v-model="selectedEffect" align-tabs="start">
       <v-tab :value="1">Motion Blur</v-tab>
       <v-tab :value="2">Multiple Instances</v-tab>
+      <v-tab :value="3">Action Lines</v-tab>
     </v-tabs>
     <v-tabs-window v-model="selectedEffect" class="tab w-100">
       <v-tabs-window-item :key="1" :value="1" class="h-100">
@@ -173,43 +217,43 @@ const applyMultipleInstancesEffect = async () => {
               Strength of Blur-Effect ({{ blurStrength }})
             </div>
             <v-slider
-              v-model="blurStrength"
-              show-ticks="always"
-              tick-size="5"
-              thumb-label
-              :max="5"
-              :min="1"
-              :step="1"
+                v-model="blurStrength"
+                show-ticks="always"
+                tick-size="5"
+                thumb-label
+                :max="5"
+                :min="1"
+                :step="1"
             ></v-slider>
             <div class="text-caption">
               Transparency of Blur-Effect ({{ blurTransparency }})
             </div>
             <v-slider
-              v-model="blurTransparency"
-              show-ticks="always"
-              tick-size="5"
-              thumb-label
-              :max="1"
-              :min="0"
-              :step="0.1"
+                v-model="blurTransparency"
+                show-ticks="always"
+                tick-size="5"
+                thumb-label
+                :max="1"
+                :min="0"
+                :step="0.1"
             ></v-slider>
             <div class="text-caption">
               Frame Skip [EXPERIMENTAL] ({{ frameSkip }})
             </div>
             <v-slider
-              v-model="frameSkip"
-              show-ticks="always"
-              tick-size="5"
-              thumb-label
-              :max="20"
-              :min="0"
-              :step="1"
+                v-model="frameSkip"
+                show-ticks="always"
+                tick-size="5"
+                thumb-label
+                :max="20"
+                :min="0"
+                :step="1"
             ></v-slider>
             <v-btn
-              class="continue-button"
-              style="margin-top: 20px; align-self: flex-end;"
-              color="primary"
-              @click="nextPage"
+                class="continue-button"
+                style="margin-top: 20px; align-self: flex-end;"
+                color="primary"
+                @click="nextPage"
             >
               Continue
             </v-btn>
@@ -218,16 +262,16 @@ const applyMultipleInstancesEffect = async () => {
             <div>
               <h3 class="pb-2">Image Preview</h3>
               <img
-              v-if="motionBlurPreview"
-              :src="motionBlurPreview"
-              alt="preview of generated image"
-              class="image-preview"
-              @click="openPreview(motionBlurPreview)"
+                  v-if="motionBlurPreview"
+                  :src="motionBlurPreview"
+                  alt="preview of generated image"
+                  class="image-preview"
+                  @click="openPreview(motionBlurPreview)"
               />
               <!-- Loading overlay with centered spinner -->
               <div v-if="isLoading" class="loading-overlay">
                 <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
-                <v-label>{{loadingText}}</v-label>
+                <v-label>{{ loadingText }}</v-label>
               </div>
               <p class="pt-5">
                 Press "Generate Image" to see a preview of the image
@@ -239,7 +283,6 @@ const applyMultipleInstancesEffect = async () => {
           </v-card>
         </div>
       </v-tabs-window-item>
-
       <v-tabs-window-item :key="2" :value="2">
         <v-container fluid>
           <div class="effect-container">
@@ -249,92 +292,92 @@ const applyMultipleInstancesEffect = async () => {
                 Number of Instances ({{ instanceCount }})
               </div>
               <v-slider
-                v-model="instanceCount"
-                show-ticks="always"
-                tick-size="5"
-                thumb-label
-                :max="100"
-                :min="1"
-                :step="1"
+                  v-model="instanceCount"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="100"
+                  :min="1"
+                  :step="1"
               ></v-slider>
               <div class="text-caption">Frame Skip ({{ frameSkip }})</div>
               <v-slider
-                v-model="frameSkip"
-                show-ticks="always"
-                tick-size="5"
-                thumb-label
-                :max="200"
-                :min="1"
-                :step="1"
+                  v-model="frameSkip"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="200"
+                  :min="1"
+                  :step="1"
               ></v-slider>
               <div class="text-caption">
                 Select Effect Type ({{ selectedEffectType }})
               </div>
               <v-select
-                v-model="selectedEffectType"
-                :items="[
+                  v-model="selectedEffectType"
+                  :items="[
                   { text: 'Move the future', value: 'first' },
                   { text: 'Show past', value: 'last' },
                   { text: 'Make me center', value: 'middle' }
                 ]"
-                item-title="text"
-                item-value="value"
-                label="Select Effect Type"
+                  item-title="text"
+                  item-value="value"
+                  label="Select Effect Type"
               ></v-select>
               <div
-                v-if="
+                  v-if="
                   selectedEffectType === 'middle' ||
                   selectedEffectType === 'first' ||
                   selectedEffectType === 'last'
                 "
-                class="text-caption"
+                  class="text-caption"
               >
                 <div class="text-caption">
                   Frame Offset ({{ frameOffset }})
                 </div>
                 <v-slider
-                  v-model="frameOffset"
-                  show-ticks="always"
-                  tick-size="5"
-                  thumb-label
-                  :max="frameOffsetMax"
-                  :min="frameOffsetMin"
-                  :step="1"
-                  label="Frame Offset"
+                    v-model="frameOffset"
+                    show-ticks="always"
+                    tick-size="5"
+                    thumb-label
+                    :max="frameOffsetMax"
+                    :min="frameOffsetMin"
+                    :step="1"
+                    label="Frame Offset"
                 ></v-slider>
               </div>
               <div class="text-caption">
                 Transparency Mode ({{ transparencyMode }})
               </div>
               <v-select
-                v-model="transparencyMode"
-                :items="[
+                  v-model="transparencyMode"
+                  :items="[
                   { text: 'Uniform', value: 'uniform' },
                   { text: 'Gradient Linear', value: 'gradient linear' },
                   { text: 'Gradient Quadratic', value: 'gradient quadratic' }
                 ]"
-                item-title="text"
-                item-value="value"
-                label="Select Transparency Mode"
+                  item-title="text"
+                  item-value="value"
+                  label="Select Transparency Mode"
               ></v-select>
 
               <div class="text-caption">
                 Transparency Strength ({{ transparencyStrength }})
               </div>
               <v-slider
-                v-model="transparencyStrength"
-                show-ticks="always"
-                tick-size="5"
-                thumb-label
-                :max="1"
-                :min="0"
-                :step="0.01"
+                  v-model="transparencyStrength"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="1"
+                  :min="0"
+                  :step="0.01"
               ></v-slider>
               <v-btn
-                class="continue-button"
-                style="margin-top: 20px; align-self: flex-end;"
-                color="primary"
-                @click="nextPage"
+                  class="continue-button"
+                  style="margin-top: 20px; align-self: flex-end;"
+                  color="primary"
+                  @click="nextPage"
               >
                 Continue
               </v-btn>
@@ -343,24 +386,110 @@ const applyMultipleInstancesEffect = async () => {
               <div>
                 <h3 class="pb-2">Image Preview</h3>
                 <img
-                  v-if="multipleInstancePreview"
-                  :src="multipleInstancePreview"
-                  alt="preview of generated image"
-                  class="image-preview"
-                  @click="openPreview(multipleInstancePreview)"
+                    v-if="multipleInstancePreview"
+                    :src="multipleInstancePreview"
+                    alt="preview of generated image"
+                    class="image-preview"
+                    @click="openPreview(multipleInstancePreview)"
                 />
                 <!-- Loading overlay with centered spinner -->
                 <div v-if="isLoading" class="loading-overlay">
                   <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
-                  <v-label>{{loadingText}}</v-label>
+                  <v-label>{{ loadingText }}</v-label>
                 </div>
                 <p class="pt-5">
                   Press "Generate Image" to see a preview of the image
                 </p>
               </div>
               <v-btn
-                @click="applyMultipleInstancesEffect"
-                :disabled="isLoading"
+                  @click="applyMultipleInstancesEffect"
+                  :disabled="isLoading"
+              >
+                Generate Image
+              </v-btn>
+            </v-card>
+          </div>
+        </v-container>
+      </v-tabs-window-item>
+      <v-tabs-window-item :key="3" :value="3">
+        <v-container fluid>
+          <div class="effect-container">
+            <div class="user-input">
+              <h3 class="pb-2">Settings</h3>
+              <div class="text-caption">
+                Count ({{ countValue }})
+              </div>
+              <v-slider
+                  v-model="countValue"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="200"
+                  :min="1"
+                  :step="1"
+              ></v-slider>
+              <div class="text-caption">Thickness ({{ thicknessValue }})</div>
+              <v-slider
+                  v-model="thicknessValue"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="10"
+                  :min="1"
+                  :step="1"
+              ></v-slider>
+
+              <div class="text-caption">
+                Smoothing Factor ({{smoothingFactor}})
+              </div>
+              <v-slider
+                  v-model="smoothingFactor"
+                  show-ticks="always"
+                  tick-size="5"
+                  thumb-label
+                  :max="45"
+                  :min="1"
+                  :step="2"
+              ></v-slider>
+              <div class="text-caption">
+                Color
+              </div>
+              <v-color-picker
+                  v-model="colorPickerValue"
+                  mode="rgba"
+                  hide-inputs
+              />
+              <v-btn
+                  class="continue-button"
+                  style="margin-top: 20px; align-self: flex-end;"
+                  color="primary"
+                  @click="nextPage"
+              >
+                Continue
+              </v-btn>
+            </div>
+            <v-card class="image-preview-container">
+              <div>
+                <h3 class="pb-2">Image Preview</h3>
+                <img
+                    v-if="actionLinesPreview"
+                    :src="actionLinesPreview"
+                    alt="preview of generated image"
+                    class="image-preview"
+                    @click="openPreview(actionLinesPreview)"
+                />
+                <!-- Loading overlay with centered spinner -->
+                <div v-if="isLoading" class="loading-overlay">
+                  <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
+                  <v-label>{{ loadingText }}</v-label>
+                </div>
+                <p class="pt-5">
+                  Press "Generate Image" to see a preview of the image
+                </p>
+              </div>
+              <v-btn
+                  @click="generateActionLinesEffect"
+                  :disabled="isLoading"
               >
                 Generate Image
               </v-btn>
@@ -372,7 +501,7 @@ const applyMultipleInstancesEffect = async () => {
     <v-dialog v-model="showPreviewModal" max-width="1200px">
       <v-card>
         <v-card-text>
-          <img :src="previewImageSrc" class="full-size-image" />
+          <img :src="previewImageSrc" class="full-size-image"/>
         </v-card-text>
         <v-card-actions>
           <v-btn @click="showPreviewModal = false">Close</v-btn>
@@ -425,8 +554,8 @@ const applyMultipleInstancesEffect = async () => {
 }
 
 .image-preview {
-  height: 80%;
-  width: fit-content;
+  height: fit-content;
+  width: 100%;
   max-width: 100%;
   max-height: 80%;
   cursor: pointer;
