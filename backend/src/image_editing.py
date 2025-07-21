@@ -772,7 +772,7 @@ def create_multiple_instance_effect_middle(video_id, output_path, instance_count
         print(f"Error creating multiple instance effect: {e}")
 
 
-def create_action_line_effect(video_id, thickness, count, smoothing_factor=7, color="#FFFFFFFF"):
+def create_action_line_effect(video_id, thickness, start_percentage, smoothing_factor=7, color="#FFFFFFFF"):
     # load foregrounds
     print(color)
     result_path = get_motion_blur_image(video_id, "action_line.png")
@@ -782,7 +782,6 @@ def create_action_line_effect(video_id, thickness, count, smoothing_factor=7, co
     used_frame_paths = []
     last_frame_id = len(frames_paths) - 1
     for i in range(last_frame_id, -1, -1):
-        print(i)
         used_frame_paths.insert(0, frames_paths[i].__str__())
     print(last_frame_id)
     used_frames = read_images(used_frame_paths)
@@ -799,8 +798,38 @@ def create_action_line_effect(video_id, thickness, count, smoothing_factor=7, co
         centers_smoothed = smooth_points_savgol(centers, window_length=smoothing_factor)
     else:
         centers_smoothed = centers
-    smoothed_points = catmull_rom_spline(centers_smoothed, count, 0.5)
+    smoothed_points = catmull_rom_spline(centers_smoothed, 20, 0.5)
     print(1)
+
+    deltas = []
+    # Calculate starting point
+    for i in range(1, len(smoothed_points)):
+        pt1 = smoothed_points[i - 1]
+        pt2 = smoothed_points[i]
+        deltas.append(get_delta_cpu(pt1, pt2))
+
+    distances = []
+    total_distance = 0
+    for i in range(0, len(deltas) - 1):
+        delta = deltas[i]
+        distance = np.sqrt(delta[0] ** 2 + delta[1] ** 2)
+        distances.append(distance)
+        total_distance += distance
+
+    start_point = float(total_distance / 100 * start_percentage)
+    start_index = 0
+    current_distance = 0.0
+    for i in range(0, len(distances)-1):
+        if start_point > current_distance:
+            current_distance += distances[i]
+        else:
+            start_index = i
+            break
+
+    print("Total line distance: ", total_distance)
+    print("Starting point: ", start_index, "/", len(smoothed_points))
+    print("Wanted line length percentage: ", 1 - start_point / total_distance)
+    print("Actual line length percentage: ", 1 - current_distance / total_distance)
 
     # create lines
     resulting_image = get_background(video_id, last_frame_id)
@@ -813,7 +842,7 @@ def create_action_line_effect(video_id, thickness, count, smoothing_factor=7, co
 
     overlay = resulting_image.copy()
 
-    for i in range(1, len(smoothed_points)):
+    for i in range(start_index + 1, len(smoothed_points)):
         pt1 = smoothed_points[i - 1]
         pt2 = smoothed_points[i]
         cv2.line(overlay, pt1, pt2, (b, g, r, a), thickness)

@@ -331,13 +331,13 @@ async def multiple_instance_effect(
 async def action_line_effect(
     video_id: str,
     thickness: int,
-    count: int,
+    start_percentage: int,
     smoothing_factor: int,
     color: str
 ):
     try:
         create_all_paths(video_id)
-        create_action_line_effect(video_id, thickness, count, smoothing_factor, color)
+        create_action_line_effect(video_id, thickness, start_percentage, smoothing_factor, color)
         output_path = get_motion_blur_image(video_id, "action_line.png")
 
         if not output_path.exists():

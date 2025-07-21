@@ -28,7 +28,7 @@ const showPreviewModal = ref(false);
 const previewImageSrc = ref("");
 
 const thicknessValue = ref(2); // Anzahl der Instanzen für Multiple Instances
-const countValue = ref(20); // Anzahl der Instanzen für Multiple Instances
+const startPercentage = ref(20); // Anzahl der Instanzen für Multiple Instances
 const smoothingFactor = ref(7); // Anzahl der Instanzen für Multiple Instances
 const actionLinesPreview = ref(""); // Vorschau für Multiple Instances
 const colorPickerValue = ref("#FFFFFFFF"); // Vorschau für Multiple Instances
@@ -160,7 +160,7 @@ const generateActionLinesEffect = async () => {
           params: {
             video_id: videoId.value,
             thickness: thicknessValue.value,
-            count: countValue.value,
+            start_percentage: startPercentage.value,
             smoothing_factor: smoothingFactor.value,
             color: colorPickerValue.value.length > 7 ? colorPickerValue.value : colorPickerValue.value + "FF"
           },
@@ -417,16 +417,16 @@ const generateActionLinesEffect = async () => {
             <div class="user-input">
               <h3 class="pb-2">Settings</h3>
               <div class="text-caption">
-                Count ({{ countValue }})
+                Starting Point Percentage ({{ startPercentage }})
               </div>
               <v-slider
-                  v-model="countValue"
+                  v-model="startPercentage"
                   show-ticks="always"
                   tick-size="5"
                   thumb-label
-                  :max="200"
-                  :min="1"
-                  :step="1"
+                  :max="90"
+                  :min="0"
+                  :step="5"
               ></v-slider>
               <div class="text-caption">Thickness ({{ thicknessValue }})</div>
               <v-slider
