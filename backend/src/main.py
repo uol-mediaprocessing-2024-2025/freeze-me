@@ -13,7 +13,7 @@ from timeit import default_timer as timer
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
-from video_editing import get_video_details
+from video_editing import get_video_details, get_masked_video_better
 from video_editing import save_video
 from video_editing import initialize_segmentation
 from video_editing import add_new_point_to_segmentation
@@ -165,9 +165,9 @@ async def get_first_frame_of_video(video_id: str):
         )
 
 @app.post("/add-point")
-async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()], point_y: Annotated[float, Form()], point_type: Annotated[int, Form()], frame_num: Annotated[int, Form()]):
+async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()], point_y: Annotated[float, Form()], point_type: Annotated[int, Form()], frame_num: Annotated[int, Form()], object_num: Annotated[int, Form()]):
     try:
-        masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num)
+        masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num, object_num)
         return FileResponse(masked_frame, media_type="image/png")
     except Exception as e:
         return JSONResponse(
@@ -178,6 +178,7 @@ async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotate
 @app.get("/get-segmentation-result")
 async def get_segmentation_result(video_id):
     try:
+        await get_masked_video_better(video_id)
         masked_video = await get_masked_video(video_id)
         set_current_step(video_id, Step.BACKGROUND)
         set_current_step(video_id, Step.MAIN_EFFECT)

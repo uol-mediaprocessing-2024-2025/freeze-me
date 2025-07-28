@@ -21,6 +21,7 @@ const dotY = ref("0px")
 const dotSize = ref(40)
 const maskedImage = ref(false)
 const segmentedVideo = ref(null)
+const objectNumber = ref(1)
 
 const props = defineProps(['modelValue'])
 const emit = defineEmits(['update:modelValue'])
@@ -94,6 +95,7 @@ const handleDotSubmit = async () => {
     pointFormData.append('point_y', estimatedY.value);
     pointFormData.append('point_type', pointType.value === "Additive" ? 1 : 0);
     pointFormData.append('frame_num', frameNum.value);
+    pointFormData.append('object_num', objectNumber.value)
     // Make a POST request to the backend API to apply the blur effect
     const frame_response = await axios.post(`${store.apiUrl}/add-point`, pointFormData, {
       responseType: 'blob'
@@ -152,7 +154,8 @@ const moveToSegmentationResult = async () => {
         <img v-if="selectedX && selectedY" :src="pointType === 'Additive' ? 'src/assets/posDot.svg' : 'src/assets/negDot.svg'" class="select-dot" :width="dotSize" :height="dotSize"/>
       </div>
       <div v-if="!segmentedVideo" class="controls">
-        <v-slider
+        <div class="slider">
+          <v-slider
           v-model="frameNum"
           show-ticks="always"
           tick-size="5"
@@ -163,13 +166,28 @@ const moveToSegmentationResult = async () => {
           class="pr-5"
           @update:modelValue="loadFrame"
         ></v-slider>
-        <v-switch v-model="pointType" :label="`PointType: ${pointType}`" false-value="Subtractive" true-value="Additive" class="point-selection" hide-details />
-        <v-btn class="submit-button" :disabled="!selectedX && !selectedY" @click="handleDotSubmit">
-          Set Point
-        </v-btn>
-        <v-btn class="submit-button" :disabled="!maskedImage" @click="moveToSegmentationResult">
-          Continue
-        </v-btn>
+        </div>
+        <div class="other">
+          <v-switch v-model="pointType" :label="`PointType: ${pointType}`" false-value="Subtractive" true-value="Additive" class="point-selection" hide-details />
+          <v-number-input
+            :reverse="false"
+            controlVariant="split"
+            label="Object Number"
+            :hideInput="false"
+            class="numberInput"
+            inset
+            :min="1"
+            v-model="objectNumber"
+            variant="outlined"
+          ></v-number-input>
+          <v-btn class="submit-button" :disabled="!selectedX && !selectedY" @click="handleDotSubmit">
+            Set Point
+          </v-btn>
+          <v-btn class="submit-button" :disabled="!maskedImage" @click="moveToSegmentationResult">
+            Continue
+          </v-btn>
+        </div>
+
       </div>
       <!-- Loading overlay with centered spinner -->
       <div v-if="isLoading" class="loading-overlay">
@@ -191,12 +209,24 @@ const moveToSegmentationResult = async () => {
 
 .controls {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 10%;
+  flex-direction: column;
 }
 
-.controls > * {
+.controls .other {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  height: 20%;
+  margin-top: 0.5em;
+}
+
+.controls .numberInput {
+  max-width: 20%;
+  min-width: 120px;
+}
+
+.controls .other  > * {
   margin-right: 1em;
   margin-top: 0;
 }

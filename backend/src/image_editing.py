@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import supervision as sv
 import torch
-from PIL import Image, ImageColor
+from PIL import Image
 from cupyx.scipy import ndimage
 from fastapi import UploadFile
 
