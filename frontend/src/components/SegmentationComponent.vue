@@ -47,7 +47,7 @@ onMounted(async () => {
     })
 
     cachedFrame = new Array(response.data).fill(null);
-    frameNum.value = response.data - 1
+    frameNum.value = 0
     totalFrames.value = response.data - 1
     await loadFrame()
   } catch (e) {
@@ -75,7 +75,7 @@ const loadFrame = async (value) => {
     displayedFrame.value = cachedFrame[value];
     return
   }
-  const first_frame = await axios.get(`${store.apiUrl}/get-frame?video_id=` + videoId.value + '&frame_num=' + (frameNum.value), {
+  const first_frame = await axios.get(`${store.apiUrl}/get-pref-segmented-frame?video_id=` + videoId.value + '&frame_num=' + (frameNum.value), {
     responseType: 'blob'
   });
   displayedFrame.value = URL.createObjectURL(first_frame.data);
@@ -127,6 +127,7 @@ const moveToSegmentationResult = async () => {
   } catch (e) {
     console.error("Failed to load result: ", e)
   }
+  cachedFrame = new Array(totalFrames.value).fill(null);
   isLoading.value = false
   loadingText.value = "";
 }

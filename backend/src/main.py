@@ -13,7 +13,7 @@ from timeit import default_timer as timer
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
-from video_editing import get_video_details, get_masked_video_better
+from video_editing import get_video_details
 from video_editing import save_video
 from video_editing import initialize_segmentation
 from video_editing import add_new_point_to_segmentation
@@ -21,7 +21,7 @@ from video_editing import get_masked_video
 from video_editing import cut_video
 from video_editing import get_frame
 from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image, delete_project, \
-    get_upload_path
+    get_upload_path, get_preview_mask_frame_name
 from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed
 from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image, create_action_line_effect
 from image_editing import save_background
@@ -178,7 +178,6 @@ async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotate
 @app.get("/get-segmentation-result")
 async def get_segmentation_result(video_id):
     try:
-        await get_masked_video_better(video_id)
         masked_video = await get_masked_video(video_id)
         set_current_step(video_id, Step.BACKGROUND)
         set_current_step(video_id, Step.MAIN_EFFECT)
@@ -262,11 +261,25 @@ async def delete_video(video_id: str):
 
 
 @app.get("/get-frame")
-async def get_first_frame_of_video(video_id: str, frame_num: int):
+async def get_frame_of_video(video_id: str, frame_num: int):
     try:
-        first_frame_path = await get_frame(video_id, frame_num)
+        first_frame_path = get_frame(video_id, frame_num)
         print("Got frame: " + first_frame_path.__str__())
         return FileResponse(first_frame_path, media_type="image/jpeg")
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to get first frame", "error": str(e)},
+        )
+
+@app.get("/get-pref-segmented-frame")
+async def get_segmented_frame_of_video(video_id: str, frame_num: int):
+    try:
+        frame_path = get_preview_mask_frame_name(video_id, frame_num)
+        if not frame_path.exists():
+            frame_path = get_frame(video_id, frame_num)
+        print("Got frame: " + frame_path.__str__())
+        return FileResponse(frame_path, media_type="image/jpeg")
     except Exception as e:
         return JSONResponse(
             status_code=500,

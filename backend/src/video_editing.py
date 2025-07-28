@@ -10,8 +10,10 @@ from timeit import default_timer as timer
 
 
 from concurrent.futures import ThreadPoolExecutor
+
+from backend.src.project_data import set_tracked_objects_count
 from image_editing import read_images
-from path_manager import create_all_paths
+from path_manager import create_all_paths, get_foreground_temp_image_path
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import torch
@@ -144,7 +146,7 @@ async def initialize_segmentation(video_id):
         print(traceback.format_exc())
 
 
-async def get_frame(video_id, frame_id):
+def get_frame(video_id, frame_id):
     try:
         return get_frame_path(video_id, frame_id)
     except Exception as e:
@@ -163,6 +165,9 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, 
         labels[frame_num][object_num - 1].append(point_type)
         print(points)
         print(labels)
+        object_count = max(map(len, points))
+        print(object_count)
+        set_tracked_objects_count(video_id, object_count)
         output_path = get_preview_mask_frames_folder_path(video_id)
         with sv.ImageSink(target_dir_path=output_path.__str__()) as sink:
             _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
@@ -190,14 +195,11 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, 
         print(e.__traceback__)
         print(traceback.format_exc())
 
-async def get_masked_video_better(video_id):
+async def get_masked_video(video_id):
     try:
         load_start = timer()
         image_path = get_images_path(video_id)
         frames_paths = sorted(sv.list_files_with_extensions(directory=image_path.__str__(), extensions=["jpeg"]))
-        background_paths = [f'{get_background_temp_image_folder(video_id).joinpath(Path(os.path.basename(x)).stem + ".png")}' for x in frames_paths]
-        foreground_paths = [f'{get_foreground_temp_image_folder(video_id).joinpath(Path(os.path.basename(x)).stem + ".png")}' for x in frames_paths]
-        segmented_paths = [f'{get_preview_mask_frames_folder_path(video_id).joinpath(Path(os.path.basename(x)).stem + ".jpeg")}' for x in frames_paths]
 
         frames = read_images(frames_paths)
         load_end = timer()
@@ -226,45 +228,62 @@ async def get_masked_video_better(video_id):
                 mask=out_masks,
                 tracker_id=np.array(ids[frame_index])
             )
-            return mask_annotator.annotate(frames[frame_index], detection)
+            return detection
 
         with ThreadPoolExecutor() as executor:
-            segmented_frames = list(executor.map(process_frame, range(len(frames))))
+            detections = list(executor.map(process_frame, range(len(frames))))
 
         detection_end = timer()
-        print(f"Finished detections, masks recalculations and segmented image.")
+        print(f"Finished detections.")
         print("--- Time: %s seconds ---" % (detection_end - segmentation_end))
         print("---------------------")
 
-        def process_alpha(frame_index):
-            mask_list = masks[frame_index]
-            combined_mask = np.logical_or.reduce(mask_list)
+        print(np.array(masks).shape)
+        def process_alpha(frame, mask_list):
+            image_list = []
 
-            frame = frames[frame_index]
-            transparent_foreground = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
-            transparent_foreground[:, :, 3] = combined_mask.astype(np.uint8) * 255
+            for mask in mask_list:
+                mask = np.array(mask)
+                transparent_foreground = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+                transparent_foreground[:, :, 3] = mask.astype(np.uint8) * 255
+                image_list.append(transparent_foreground)
 
-            transparent_background = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
-            transparent_background[:, :, 3] = ((combined_mask.astype(np.uint8) + 1) % 2) * 255
+            return np.array(image_list)
 
-            return transparent_foreground, transparent_background
-
+        print(len(frames), len(masks))
         with ThreadPoolExecutor() as executor:
-            results = list(executor.map(process_alpha, range(len(frames))))
-        foreground_frames, background_frames = zip(*results)
+            foreground_frames = list(executor.map(process_alpha, frames, masks))
+        print(np.array(foreground_frames).shape)
+        print(np.array(foreground_frames)[:, 0].shape)
+
 
         masked_images_end = timer()
         print(f"Finished creating foreground and background images.")
         print("--- Time: %s seconds ---" % (masked_images_end - detection_end))
         print("---------------------")
 
-        write_images(foreground_paths, foreground_frames)
-        write_images(background_paths, background_frames)
+        def create_segmented_image(frame, detection):
+            return mask_annotator.annotate(frame, detection)
+
+        with ThreadPoolExecutor() as executor:
+            segmented_frames = list(executor.map(create_segmented_image, frames, detections))
+
+        segmented_frames_end = timer()
+        print(f"Finished creating segmented images.")
+        print("--- Time: %s seconds ---" % (segmented_frames_end - masked_images_end))
+        print("---------------------")
+
+        for o in range(0, len(foreground_frames[0])):
+            foreground_paths = [f'{get_foreground_temp_image_path(video_id, f, o)}' for f in range(0, len(foreground_frames))]
+            foreground_object_frames = np.array(foreground_frames)[:, o]
+            write_images(foreground_paths, foreground_object_frames)
+
+        segmented_paths = [f'{get_preview_mask_frame_name(video_id, i)}' for i in range(0, len(foreground_frames))]
         write_images(segmented_paths, segmented_frames)
 
         saving_end = timer()
         print(f"Finished saving all images.")
-        print("--- Time: %s seconds ---" % (saving_end - masked_images_end))
+        print("--- Time: %s seconds ---" % (saving_end - segmented_frames_end))
         print("---------------------")
 
 

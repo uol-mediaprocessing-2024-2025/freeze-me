@@ -3,7 +3,7 @@ import os
 
 FOLDER_PATH = "videos"
 IMAGE_PATH = "images"
-MASK_PREVIEW_NAME = "mask.png"
+MASK_PREVIEW_NAME = "mask.jpeg"
 MASK_PREVIEW_FOLDER = "mask_previews"
 MASKED_VIDEO_NAME = "masked.mp4"
 CUT_FOREGROUND_IMAGES_FOLDER = "temp_foreground"
@@ -122,11 +122,13 @@ def get_temp_file_path(video_id):
 def get_masked_video_path(video_id):
     return get_video_folder_path(video_id).joinpath(MASKED_VIDEO_NAME)
 
-def get_foreground_temp_image_folder(video_id):
-    return get_video_folder_path(video_id).joinpath(CUT_FOREGROUND_IMAGES_FOLDER)
+def get_foreground_temp_image_folder(video_id, object_id):
+    path = get_video_folder_path(video_id).joinpath(CUT_FOREGROUND_IMAGES_FOLDER).joinpath(object_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
-def get_foreground_temp_image_path(video_id, frame_id):
-    return get_foreground_temp_image_folder(video_id).joinpath(str(frame_id).zfill(5) + ".png")
+def get_foreground_temp_image_path(video_id, frame_id, object_id):
+    return get_foreground_temp_image_folder(video_id, str(object_id)).joinpath(str(frame_id).zfill(5) + ".png")
 
 def get_background_temp_image_folder(video_id):
     return get_video_folder_path(video_id).joinpath(CUT_BACKGROUND_IMAGES_FOLDER)
@@ -139,7 +141,6 @@ def create_all_paths(video_id):
     Path.cwd().joinpath(FOLDER_PATH).mkdir(parents=True, exist_ok=True)
     get_video_folder_path(video_id).mkdir(parents=True, exist_ok=True)
     get_images_path(video_id).mkdir(parents=True, exist_ok=True)
-    get_foreground_temp_image_folder(video_id).mkdir(parents=True, exist_ok=True)
     get_background_temp_image_folder(video_id).mkdir(parents=True, exist_ok=True)
     get_preview_mask_frames_folder_path(video_id).mkdir(parents=True, exist_ok=True)
     get_motion_blur_folder(video_id).mkdir(parents=True, exist_ok=True)
