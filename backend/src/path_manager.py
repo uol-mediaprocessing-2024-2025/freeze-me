@@ -122,8 +122,11 @@ def get_temp_file_path(video_id):
 def get_masked_video_path(video_id):
     return get_video_folder_path(video_id).joinpath(MASKED_VIDEO_NAME)
 
+def get_foreground_parent_folder(video_id):
+    return get_video_folder_path(video_id).joinpath(CUT_FOREGROUND_IMAGES_FOLDER)
+
 def get_foreground_temp_image_folder(video_id, object_id):
-    path = get_video_folder_path(video_id).joinpath(CUT_FOREGROUND_IMAGES_FOLDER).joinpath(object_id)
+    path = get_foreground_parent_folder(video_id).joinpath(str(object_id))
     path.mkdir(parents=True, exist_ok=True)
     return path
 

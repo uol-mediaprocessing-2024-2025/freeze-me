@@ -1,0 +1,32 @@
+{
+  "demographics": {
+    "age": "18-24",
+    "gender": "maennlich",
+    "education": "hochschule",
+    "frequency": "taeglich",
+    "competency": "sehr_erfahren"
+  },
+  "part_one": [
+    {
+      "image_path": "images\\action_line\\billiard-13.png",
+      "answer": "Die weiße Kugel wird gegen die rote Kugel geschlagen. Die weiße Kugel prallt ab und stößt die rote Kugel in das Loch unten rechts."
+    },
+    {
+      "image_path": "images\\multiple_instances\\street-traffic-13.png",
+      "answer": "Zu sehen ist eine Kreuzung mit einem Bahnübergang im Hintergrund. Ein Zug fährt auf dem Gleis über den Bahnübergang von links nach rechts."
+    },
+    {
+      "image_path": "images\\first_frame\\football-12.jpg",
+      "answer": "Zu sehen ist ein Konterangriff in einem Fußballspiel. Der ballführende Spieler wird vermutlich selbst den Abschluss suchen oder den Ball an einen seiner Mitspieler ablegen (vermutlich dem unteren Spieler in Schwarz)."
+    },
+    {
+      "image_path": "images\\motion_blur\\rocket-league-11.png",
+      "answer": "Zu sehen ist das Spielgeschehen aus dem Videospiel Rocket League. Der Ball fliegt von der linken Seite des Bildes auf den Boden am Rand des Mittelkreises und prallt in Richtung der rechten Seite des Bildes nach oben ab. Das Auto befindet sich zu Beginn auf der linken seite des Bildes in der Luft und fliegt / gleitet auf die rechte Seite des Bildes und ist kurz davor auf dem Boden aufzukommen."
+    },
+    {
+      "image_path": "images\\key_frame\\gymnastics-9.jpg",
+      "answer": "Zu sehen ist vermutlich eine Olympia-Teilnehmerin in der Disziplin Bodenturnen, die gerade dabei ist ihre Choreografie aufzuführen. Möglicherweise ist sie gerade dabei ein Rückwärtssalto auszuführen und kurz davor auf dem Boden aufzukommen - ist allerdings überhaupt nicht erkennbar."
+    }
+  ],
+  "part_two": []
+}

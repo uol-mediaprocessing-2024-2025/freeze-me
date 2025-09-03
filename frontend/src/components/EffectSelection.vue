@@ -456,7 +456,7 @@ const generateActionLinesEffect = async () => {
               </div>
               <v-color-picker
                   v-model="colorPickerValue"
-                  mode="rgba"
+                  mode="hexa"
                   hide-inputs
               />
               <v-btn
@@ -520,14 +520,14 @@ const generateActionLinesEffect = async () => {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  justify-content: space-evenly;
+  justify-content: space-between;
 }
 
 .user-input {
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
-  width: 40%;
+  width: 50%;
   padding: 1em;
 }
 

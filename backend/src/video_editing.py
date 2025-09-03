@@ -1,15 +1,13 @@
 import io
 import os
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from timeit import default_timer as timer
 
 import cv2
 import supervision as sv
 from sam2.sam2_video_predictor import SAM2VideoPredictor
-from timeit import default_timer as timer
-
-
-from concurrent.futures import ThreadPoolExecutor
 
 from backend.src.project_data import set_tracked_objects_count
 from image_editing import read_images
@@ -23,15 +21,12 @@ import numpy as np
 from sam2.build_sam import build_sam2_video_predictor
 
 from path_manager import get_video_folder_path
-from path_manager import get_background_temp_image_folder
-from path_manager import get_foreground_temp_image_folder
 from path_manager import get_images_path
 from path_manager import get_upload_path
 from path_manager import get_checkpoint_path
 from path_manager import get_config_path
 from path_manager import get_temp_file_path
 from path_manager import get_frame_path
-from path_manager import get_masked_video_path
 from path_manager import get_preview_mask_frames_folder_path
 from path_manager import get_preview_mask_frame_name
 
@@ -70,6 +65,7 @@ from fastapi import UploadFile
 import shutil
 
 inference_state: {}
+loaded_video = None
 fps = 0
 points = []
 labels = []
@@ -132,14 +128,19 @@ async def get_video_details(video_id):
 
 async def initialize_segmentation(video_id):
     try:
-        global inference_state, points, labels
+        global inference_state, points, labels, loaded_video
         image_folder = get_images_path(video_id)
         total_frames = len(os.listdir(image_folder))
         points = [[[]] for _ in range(total_frames)]
         labels = [[[]] for _ in range(total_frames)]
         print(points)
         print(labels)
-        inference_state = predictor.init_state(video_path=image_folder.__str__())
+        mask_previews = get_preview_mask_frames_folder_path(video_id)
+        for file in os.listdir(mask_previews):
+            os.remove(os.path.join(mask_previews, file))
+        if loaded_video is None or loaded_video != video_id:
+            inference_state = predictor.init_state(video_path=image_folder.__str__())
+            loaded_video = video_id
     except Exception as e:
         print(e)
         print(e.__traceback__)
@@ -313,7 +314,8 @@ async def cut_video(video_id: str, start_time: float, end_time: float):
         if not original_video_path.exists():
             raise FileNotFoundError(f"Originalvideo {original_video_path.__str__()} wurde nicht gefunden.")
 
-        global fps
+        global fps, loaded_video
+        loaded_video = None
         start_frame = int(start_time * fps)
         end_frame = int(end_time * fps)
         print(f"Start Frame: {start_frame}")

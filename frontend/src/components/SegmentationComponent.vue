@@ -10,7 +10,7 @@ const loadingText = ref("");
 const displayedFrame = ref(null);
 const videoId = ref(null)
 const frameNum = ref(0)
-const totalFrames = ref(0)
+const maxFrameIndex = ref(0)
 const pointType = ref("Additive")
 const selectedX = ref(null)
 const selectedY = ref(null)
@@ -20,8 +20,9 @@ const dotX = ref("0px")
 const dotY = ref("0px")
 const dotSize = ref(40)
 const maskedImage = ref(false)
-const segmentedVideo = ref(null)
+const segmentedVideo = ref(false)
 const objectNumber = ref(1)
+const segmentationInputs = ref(0)
 
 const props = defineProps(['modelValue'])
 const emit = defineEmits(['update:modelValue'])
@@ -48,8 +49,8 @@ onMounted(async () => {
 
     cachedFrame = new Array(response.data).fill(null);
     frameNum.value = 0
-    totalFrames.value = response.data - 1
-    await loadFrame()
+    maxFrameIndex.value = response.data - 1
+    await loadFrame(0)
   } catch (e) {
     console.error("Failed to load first frame: ", e)
   }
@@ -63,11 +64,16 @@ const handleImageClick = (event) => {
   estimatedX.value = Math.max(0, calcX);
   estimatedY.value = Math.max(0, calcY);
 
-  dotX.value = Math.floor(event.layerX - dotSize.value/2) + "px"
-  dotY.value = Math.floor(event.layerY - dotSize.value/2) + "px"
+  const calcDotX = Math.floor(event.layerX - dotSize.value/2)
+  const calcDotY = Math.floor(event.layerY - dotSize.value/2)
+  console.log("DotX: ", calcDotX, "DotY: ", calcDotY)
+  dotX.value = calcDotX + event.target.offsetLeft + "px"
+  dotY.value = calcDotY + event.target.offsetTop + "px"
+  console.log("DotX: ", dotX.value, "DotY: ", dotY.value)
   selectedY.value = estimatedY
   selectedX.value = estimatedX
   console.log("X: ", calcX, "Y: ", calcY)
+  console.log(event)
 }
 
 const loadFrame = async (value) => {
@@ -75,7 +81,7 @@ const loadFrame = async (value) => {
     displayedFrame.value = cachedFrame[value];
     return
   }
-  const first_frame = await axios.get(`${store.apiUrl}/get-pref-segmented-frame?video_id=` + videoId.value + '&frame_num=' + (frameNum.value), {
+  const first_frame = await axios.get(`${store.apiUrl}/get-pref-segmented-frame?video_id=` + videoId.value + '&frame_num=' + (value), {
     responseType: 'blob'
   });
   displayedFrame.value = URL.createObjectURL(first_frame.data);
@@ -100,11 +106,11 @@ const handleDotSubmit = async () => {
     const frame_response = await axios.post(`${store.apiUrl}/add-point`, pointFormData, {
       responseType: 'blob'
     });
-    console.log(frame_response)
-    console.log(frame_response.data)
     displayedFrame.value = URL.createObjectURL(frame_response.data);
     store.segmentedFrame = displayedFrame.value
+    cachedFrame[frameNum.value] = displayedFrame.value
     maskedImage.value = true;
+    segmentationInputs.value +=1;
   } catch (e) {
     console.error(e)
     console.error(e.response.data)
@@ -114,20 +120,22 @@ const handleDotSubmit = async () => {
   }
 }
 
-const moveToSegmentationResult = async () => {
+const segmentVideo = async () => {
   isLoading.value = true
   loadingText.value = "Segmenting video...";
   try {
-    const resultVideo = await axios.get(`${store.apiUrl}/get-segmentation-result?video_id=` + videoId.value, {
-      responseType: 'blob'
-    });
-    segmentedVideo.value = URL.createObjectURL(resultVideo.data);
-    console.log(resultVideo)
+    await axios.get(`${store.apiUrl}/get-segmentation-result?video_id=` + videoId.value);
+    segmentedVideo.value = true
     console.log(segmentedVideo.value)
+    cachedFrame = new Array(maxFrameIndex.value).fill(null);
+    console.log(maxFrameIndex.value)
+    for (let i = maxFrameIndex.value; i >= 0; i--) {
+      await loadFrame(i)
+    }
+    segmentationInputs.value = 0;
   } catch (e) {
     console.error("Failed to load result: ", e)
   }
-  cachedFrame = new Array(totalFrames.value).fill(null);
   isLoading.value = false
   loadingText.value = "";
 }
@@ -149,23 +157,23 @@ const moveToSegmentationResult = async () => {
     <v-card-title class="justify-center">
       <h2>Segmentation</h2>
     </v-card-title>
-    <div v-if="!segmentedVideo" class="frame-wrapper">
+    <div class="frame-wrapper">
       <div class="wrapper">
         <img v-if="displayedFrame" :src="displayedFrame" @click.stop="handleImageClick" class="segmentation-image" ismap/>
         <img v-if="selectedX && selectedY" :src="pointType === 'Additive' ? 'src/assets/posDot.svg' : 'src/assets/negDot.svg'" class="select-dot" :width="dotSize" :height="dotSize"/>
       </div>
-      <div v-if="!segmentedVideo" class="controls">
+      <div class="controls">
         <div class="slider">
           <v-slider
           v-model="frameNum"
           show-ticks="always"
           tick-size="5"
           thumb-label
-          :max="totalFrames"
+          :max="maxFrameIndex"
           :min="0"
           :step="1"
           class="pr-5"
-          @update:modelValue="loadFrame"
+          @update:modelValue="loadFrame(frameNum)"
         ></v-slider>
         </div>
         <div class="other">
@@ -184,7 +192,10 @@ const moveToSegmentationResult = async () => {
           <v-btn class="submit-button" :disabled="!selectedX && !selectedY" @click="handleDotSubmit">
             Set Point
           </v-btn>
-          <v-btn class="submit-button" :disabled="!maskedImage" @click="moveToSegmentationResult">
+          <v-btn class="continue-button" @click="segmentVideo" :disabled="isLoading || segmentationInputs === 0">
+            Segment Video
+          </v-btn>
+          <v-btn class="continue-button" @click="nextPage" :disabled="!segmentedVideo">
             Continue
           </v-btn>
         </div>
@@ -195,13 +206,6 @@ const moveToSegmentationResult = async () => {
         <v-progress-circular indeterminate color="primary" size="50"></v-progress-circular>
         <v-label>{{loadingText}}</v-label>
       </div>
-    </div>
-    <div v-if="segmentedVideo" class="frame-wrapper">
-      <video v-if="segmentedVideo" :src="segmentedVideo" controls muted class="video">
-      </video>
-      <v-btn class="continue-button" @click="nextPage">
-        Continue
-      </v-btn>
     </div>
   </v-card>
 </template>
@@ -235,6 +239,9 @@ const moveToSegmentationResult = async () => {
 .wrapper {
   position: relative;
   height: 80%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .select-dot {
@@ -245,8 +252,7 @@ const moveToSegmentationResult = async () => {
 }
 
 .continue-button {
-  align-self: flex-end;
-  width: 33%;
+  width: 20%;
   min-width: 7em;
 }
 
@@ -277,7 +283,7 @@ const moveToSegmentationResult = async () => {
 
 .segmentation-image {
   position: absolute;
-  height: 80%;
+  height: 100%;
 }
 
 .frame-wrapper {

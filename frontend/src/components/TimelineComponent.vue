@@ -120,6 +120,7 @@ const goToStep = (step) => {
 
 .step-card {
   justify-items: center;
+  text-align: center;
   width: 7em;
   padding: 0.5em 0;
 }

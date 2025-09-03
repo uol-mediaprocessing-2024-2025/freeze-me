@@ -22,7 +22,8 @@ from video_editing import cut_video
 from video_editing import get_frame
 from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image, delete_project, \
     get_upload_path, get_preview_mask_frame_name
-from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed
+from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed, \
+    create_multiple_instance_effect_unified
 from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image, create_action_line_effect
 from image_editing import save_background
 from image_effects import process_effect_request
@@ -178,10 +179,10 @@ async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotate
 @app.get("/get-segmentation-result")
 async def get_segmentation_result(video_id):
     try:
-        masked_video = await get_masked_video(video_id)
+        await get_masked_video(video_id)
         set_current_step(video_id, Step.BACKGROUND)
         set_current_step(video_id, Step.MAIN_EFFECT)
-        return FileResponse(masked_video, media_type="video/mp4")
+        return JSONResponse(status_code=200, content="")
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -301,37 +302,7 @@ async def multiple_instance_effect(
         create_all_paths(video_id)
         output_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
 
-        # Wähle die Methode basierend auf frame_reference
-        if frame_reference == "middle":
-            create_multiple_instance_effect_middle(
-                video_id,
-                str(output_path),
-                instance_count,
-                frame_skip,
-                transparency_mode,
-                transparency_strength,
-                frame_offset
-            )
-        elif frame_reference == "first":
-            create_multiple_instance_effect_reversed(
-                video_id,
-                str(output_path),
-                instance_count,
-                frame_skip,
-                transparency_mode,
-                transparency_strength,
-                frame_offset
-            )
-        else:  # "last"
-            create_multiple_instance_effect(
-                video_id,
-                str(output_path),
-                instance_count,
-                frame_skip,
-                transparency_mode,
-                transparency_strength,
-                frame_offset
-            )
+        create_multiple_instance_effect_unified(video_id, output_path, instance_count, frame_skip, frame_reference, transparency_mode, transparency_strength, frame_offset)
 
         if not output_path.exists():
             raise FileNotFoundError(f"Das Bild wurde nicht unter {output_path} gespeichert.")
