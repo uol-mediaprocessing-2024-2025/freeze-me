@@ -33,18 +33,15 @@ from path_manager import get_preview_mask_frame_name
 from image_editing import write_images
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cpu")
 
 print("PyTorch version:", torch.__version__)
 print("Torchvision version:", torchvision.__version__)
-print("CUDA available:", torch.cuda.is_available())
 print("CUDA Version:", torch.version.cuda)
 print("CuDNN Version:", torch.backends.cudnn.version())
-print(torch.__version__)
-print(torch.backends.mkl.is_available())
 print(f"Using checkpoint: {get_checkpoint_path()}")
 print(f"Using config: {get_config_path()}")
 print(f"Using device: {device}")
-print("FlashAttention available:", torch.backends.cuda.flash_sdp_enabled())
 
 if device.type == "cuda":
     torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
@@ -79,8 +76,6 @@ async def save_video(file: UploadFile):
     video_data = io.BytesIO(await file.read())
     with open(temp_path, "wb") as f:
         f.write(video_data.getbuffer())
-
-    print("saved file at: ", temp_path.__str__())
 
     ffmpeg.input(temp_path).output(
         path.__str__(),
@@ -159,7 +154,8 @@ def get_frame(video_id, frame_id):
 async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num, object_num):
     try:
         global points, labels
-        if len(points[frame_num]) < object_num:
+        print(len(points[frame_num]), object_num)
+        while len(points[frame_num]) < object_num:
             points[frame_num].append([])
             labels[frame_num].append([])
         points[frame_num][object_num - 1].append([point_x, point_y])
@@ -239,7 +235,6 @@ async def get_masked_video(video_id):
         print("--- Time: %s seconds ---" % (detection_end - segmentation_end))
         print("---------------------")
 
-        print(np.array(masks).shape)
         def process_alpha(frame, mask_list):
             image_list = []
 
@@ -251,12 +246,8 @@ async def get_masked_video(video_id):
 
             return np.array(image_list)
 
-        print(len(frames), len(masks))
         with ThreadPoolExecutor() as executor:
             foreground_frames = list(executor.map(process_alpha, frames, masks))
-        print(np.array(foreground_frames).shape)
-        print(np.array(foreground_frames)[:, 0].shape)
-
 
         masked_images_end = timer()
         print(f"Finished creating foreground and background images.")

@@ -4,6 +4,9 @@ import os
 from concurrent.futures.thread import ThreadPoolExecutor
 from pathlib import Path
 from timeit import default_timer as timer
+
+import psutil
+import scipy
 from scipy.signal import savgol_filter
 
 import cupy
@@ -84,7 +87,8 @@ def get_transparent_background(video_id, frame_id):
 
 
 async def create_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip):
-    device = get_device()
+    #device = get_device()
+    device = "cpu"
     motion_blur_data = get_motion_blur_data(video_id)
     if not motion_blur_data:
         # If data doesn't exist, this is the first time generating motion blur image
@@ -96,7 +100,7 @@ async def create_motion_blur_image(video_id, blur_strength, blur_transparency, f
     if device == "cuda":
         path = gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, True)
     else:
-        path = generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip)
+        path = cpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, True)
 
     # update motion blur data
     motion_blur_data[0] = blur_strength
@@ -113,10 +117,7 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
     object_count = len(os.listdir(get_foreground_parent_folder(video_id)))
     resulting_image_gpu = None
 
-    print("warming up gpu")
     warmup_cupy_kernels()
-    print("done")
-
     while object_count > 0:
         object_count -= 1
         if not generate_blur:
@@ -130,7 +131,7 @@ def gpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, gene
         last_frame_id = len(frames_paths) - 1
         for i in range(last_frame_id, -1, -(1 + frame_skip)):
             used_frame_paths.insert(0, frames_paths[i].__str__())
-        print(last_frame_id)
+        print(f"Last frame id: {last_frame_id}")
         used_frames = read_images(used_frame_paths)
         load_end = timer()
         print("--- Loading: %s seconds ---" % (load_end - load_start))
@@ -189,7 +190,6 @@ def generate_blur_for_object_gpu(batch, blur_strength, blur_transparency, frame_
 
     start = timer()
     with ThreadPoolExecutor(max_workers=min(8, len(batch_gpu))) as executor:
-        print("created streams")
         rois = list(executor.map(get_roi_gpu, batch_gpu))
         valid_rois = []
         valid_batch_gpu = []
@@ -264,8 +264,142 @@ def generate_blur_for_object_gpu(batch, blur_strength, blur_transparency, frame_
     print("---------------------")
     return blurred_batch_gpu
 
+def generate_blur_for_object_cpu(batch, blur_strength, blur_transparency, frame_skip, generate_blur):
+    if not generate_blur:
+        return batch
+
+    start = timer()
+    with ThreadPoolExecutor(max_workers=min(8, len(batch))) as executor:
+        rois = list(executor.map(get_roi_cpu, batch))
+        valid_rois = []
+        valid_batch_gpu = []
+        for i in range(0, len(batch) - 1):
+            roi = rois[i]
+            if roi is not None:
+                valid_rois.append(roi)
+                valid_batch_gpu.append(batch[i])
+        batch = valid_batch_gpu
+        rois = valid_rois
+        del valid_rois
+
+        print("finished rois")
+        centers = list(executor.map(get_center_cpu, rois))
+        print("finished centers")
+
+        final_centers = [centers[len(centers) - 1]]
+        valid_batch_gpu = [batch[len(centers) - 1]]
+        valid_rois = [rois[len(centers) - 1]]
+        last_center_index = len(centers) - 1
+        print(f"batch_gpu_length: {len(batch)}")
+        for j in range(len(centers) - 2, -1, -1):
+            last_center = final_centers[len(final_centers) - 1]
+            potential_center = centers[j]
+            magnitude = get_magnitude_cpu(get_delta_cpu(last_center, potential_center), rois[last_center_index])
+            print(f"magnitude: {magnitude}, last_center_index: {last_center_index}, j: {j}")
+            if magnitude > 0.3:
+                final_centers.append(centers[j])
+                last_center_index = j
+                valid_batch_gpu.append(batch[j])
+                valid_rois.append(rois[j])
+
+        final_centers.reverse()
+        valid_batch_gpu.reverse()
+        valid_rois.reverse()
+        centers, batch, rois = final_centers, valid_batch_gpu, valid_rois
+        del valid_batch_gpu, final_centers, valid_rois
+
+        deltas = list(executor.map(get_delta_cpu, centers[:-1], centers[1:]))
+        print("finished deltas")
+        angles = list(executor.map(get_angle_cpu, deltas))
+        print("finished angles")
+        magnitudes = list(executor.map(get_magnitude_cpu, deltas, rois[:-1]))
+        print("finished magnitudes")
+    prep_time = timer()
+    print("--- Preparing: %s seconds ---" % (prep_time - start))
+    print("---------------------")
+    print(f"batch_gpu_length: {len(batch)}")
+
+    with ThreadPoolExecutor() as executor:
+        cpu_blur_image_with_defaults = functools.partial(
+            cpu_blur_image,
+            blur_strength=blur_strength,
+            blur_transparency=blur_transparency,
+            frame_skip=frame_skip,
+        )
+        blurred_batch_gpu = list(
+            executor.map(cpu_blur_image_with_defaults, batch[:-1], angles, magnitudes, rois[:-1], centers[:-1]))
+    blurred_batch_gpu.append(batch[-1])
+    print(f"blurred_batch_gpu_length: {len(blurred_batch_gpu)}")
+    blur_time = timer()
+    print("--- Blurring: %s seconds ---" % (blur_time - prep_time))
+    print("---------------------")
+    return blurred_batch_gpu
+
 def cpu_motion_blur(video_id, blur_strength, blur_transparency, frame_skip, generate_blur):
-    return Path(get_motion_blur_image(video_id, "motion_blur.png"))
+    # Get needed frames: regular if new blur is generated and already blurred frames if blur isn't necessary
+    result_path = get_motion_blur_image(video_id, "motion_blur.png")
+    object_count = len(os.listdir(get_foreground_parent_folder(video_id)))
+    resulting_image_gpu = None
+
+    while object_count > 0:
+        object_count -= 1
+        if not generate_blur:
+            return result_path
+
+        frame_path = get_foreground_temp_image_folder(video_id, object_count).__str__()
+        frames_paths = sorted(sv.list_files_with_extensions(directory=frame_path, extensions=["png"]))
+        used_frame_paths = []
+
+        load_start = timer()
+        last_frame_id = len(frames_paths) - 1
+        for i in range(last_frame_id, -1, -(1 + frame_skip)):
+            used_frame_paths.insert(0, frames_paths[i].__str__())
+        print(f"Last frame id: {last_frame_id}")
+        used_frames = read_images(used_frame_paths)
+        load_end = timer()
+        print("--- Loading: %s seconds ---" % (load_end - load_start))
+        print("---------------------")
+        print("Loaded: " + str(len(used_frames)) + " frames.")
+
+        # Calculate how many images can be in a batch for the gpu
+        ram = psutil.virtual_memory()
+        free_mem = ram.free / 1024 ** 2
+        byte_size = used_frames[0].size
+        mb_size = byte_size / 1024 ** 2
+        max_images = round(free_mem / mb_size)
+        print(f"Free RAM: {free_mem:.2f} MB")
+        print(f"Maximum amount of MB per image: {mb_size}")
+        print(f"Maximum amount of images in RAM: {max_images}")
+
+        # Set batch size lower than maximum possible just in case
+        batch_size = max_images / 2
+        batch_size = round(batch_size * 0.75)
+        batch_size = len(used_frames) if batch_size > len(used_frames) else batch_size
+
+        if resulting_image_gpu is None:
+            resulting_image = get_background(video_id, last_frame_id)
+            resulting_image_gpu = np.array(resulting_image, dtype=np.uint8)
+
+        # generate image batch for batch
+        for i in range(0, len(used_frames), batch_size):
+            # load frames into gpu
+            batch = used_frames[i:i + batch_size]
+
+            object_gpu_batch = generate_blur_for_object_cpu(batch, blur_strength, blur_transparency, frame_skip,
+                                                            generate_blur)
+
+            comp_start = timer()
+            for j in range(0, len(object_gpu_batch)):
+                resulting_image_gpu = alpha_composite_cpu(object_gpu_batch[j], resulting_image_gpu)
+
+            comp_end = timer()
+            print("--- Composite: %s seconds ---" % (comp_end - comp_start))
+            print("---------------------")
+        del object_gpu_batch
+
+    # save and return
+    cv2.imwrite(result_path.__str__(), resulting_image_gpu)
+    return result_path
 
 
 def gpu_blur_image(image, angle, magnitude, rois, center, stream, blur_strength, blur_transparency, frame_skip, show):
@@ -324,32 +458,57 @@ def gpu_blur_image(image, angle, magnitude, rois, center, stream, blur_strength,
     return image
 
 
-def cpu_blur_image(image, blur_strength, blur_transparency, frame_skip, angle, magnitude, rios):
+def cpu_blur_image(image, angle, magnitude, rois, center, blur_strength, blur_transparency, frame_skip):
     # create kernel based on blur_strength, magnitude and frame_skip
-    kernel_size = magnitude * 2 + blur_strength * 10 + frame_skip * 5
-    kernel = np.zeros((kernel_size, kernel_size), dtype=np.float32)
-    kernel[kernel_size // 2] = 1.0 / kernel_size
+    kernel_size = int(magnitude * 15 + blur_strength * 15 + frame_skip * 5)
+    kernel = np.zeros((1, kernel_size), dtype=np.float32)
+    kernel[0] = 1.0 / kernel_size
 
     # Crop ROI
-    cropped = image[rios[0]:rios[2], rios[1], rios[3]]
-    width = rios[2] - rios[0]
-    height = rios[3] - rios[1]
+    cropped = image[rois[1]:rois[3], rois[0]:rois[2]]
+    center_y = center[1]
+    center_x = center[0]
 
     # Rotate ROI
-    center = (width // 2, height // 2)
-    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1)
-    rotated = cv2.warpAffine(cropped, rotation_matrix, (width, height), flags=cv2.INTER_CUBIC)
+    rotated = scipy.ndimage.rotate(cropped, angle, reshape=True, mode='constant', cval=0)
 
     # Stretch and blur
-    stretched = cv2.resize(rotated, None, None, 1.0, 1.0, cv2.INTER_LINEAR)
-    result = cv2.filter2D(stretched, -1, kernel)
+    stretched = scipy.ndimage.zoom(rotated, (0.9, magnitude, 1), order=1)
+    padded = np.pad(stretched, pad_width=((0, 0), (kernel_size, kernel_size), (0, 0)), mode='constant',
+                      constant_values=0)
+
+    result = np.zeros_like(padded)
+    for channel in range(4):  # Loop over RGBA channels
+        result[:, :, channel] = scipy.ndimage.convolve(padded[:, :, channel], kernel, mode='constant', cval=0)
 
     # Rotate back
-    inverse_matrix = cv2.getRotationMatrix2D(center, -angle, 1)
-    unrotated = cv2.warpAffine(result, inverse_matrix, (width, height), flags=cv2.INTER_CUBIC)
+    derotated = scipy.ndimage.rotate(result, -angle, reshape=True, mode='constant', cval=0)
+
+    # Calculate new x and y coordinates (necessary because of changed crop-size)
+    derotated_height, derotated_width = derotated.shape[0], derotated.shape[1]
+    new_y1 = int(center_y - derotated_height // 2)
+    new_y2 = int(new_y1 + derotated_height)
+    new_x1 = int(center_x - derotated_width // 2)
+    new_x2 = int(new_x1 + derotated_width)
+
+    crop_y1 = max(0, -new_y1)
+    crop_y2 = derotated_height - max(0, new_y2 - image.shape[0])
+    crop_x1 = max(0, -new_x1)
+    crop_x2 = derotated_width - max(0, new_x2 - image.shape[1])
+
+    derotated_cropped = derotated[crop_y1:crop_y2, crop_x1:crop_x2]
+
+    new_y1 = max(0, new_y1)
+    new_y2 = min(image.shape[0], new_y2)
+    new_x1 = max(0, new_x1)
+    new_x2 = min(image.shape[1], new_x2)
 
     # Put back in original frame
-    image[rios[0]:rios[2], rios[1], rios[3]] = unrotated
+    old_crop_mask = np.zeros_like(cropped)
+    image[rois[1]:rois[3], rois[0]:rois[2]] = old_crop_mask  # deletes unblurred input
+    image[new_y1:new_y2, new_x1:new_x2] = derotated_cropped  # adds blurred input
+
+    # Add transparency
     image[:, :, 3] = (image[:, :, 3] * blur_transparency).astype(np.uint8)
     return image
 
@@ -381,9 +540,6 @@ def alpha_composite_cpu(foreground, background):
     fg = np.array(foreground, dtype=np.float32)
     bg = np.array(background, dtype=np.float32)
 
-    print("bg max alpha:", np.max(background[:, :, 3]))
-    print("fg max alpha:", np.max(foreground[:, :, 3]))
-
     fg_rgb = fg[:, :, :3]
     fg_alpha = fg[:, :, 3] / 255
     bg_rgb = bg[:, :, :3]
@@ -394,14 +550,13 @@ def alpha_composite_cpu(foreground, background):
     out_rgb = np.zeros_like(fg_rgb)
 
     for c in range(3):
-        out_rgb[:, :, c] = (
-                fg_rgb[:, :, c] * fg_alpha +
-                bg_rgb[:, :, c] * bg_alpha * (1 - fg_alpha)
-        )
-    epsilon = 1e-5
-    out_rgb = np.divide(out_rgb, out_alpha[..., np.newaxis] + epsilon)
+        out_rgb[:, :, c] = (fg_rgb[:, :, c] * fg_alpha +
+                            bg_rgb[:, :, c] * bg_alpha * (1 - fg_alpha))
+        out_rgb[:, :, c] = np.where(out_alpha_mask,
+                                      out_rgb[:, :, c] / out_alpha,
+                                      out_rgb[:, :, c])
 
-    out_image = np.dstack((out_rgb, np.ones_like(bg_alpha) * 255)).astype(np.uint8)
+    out_image = np.dstack((out_rgb, out_alpha * 255)).astype(np.uint8)
     return out_image
 
 
@@ -433,7 +588,6 @@ def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame
 
             kernel = np.zeros((kernel_size, kernel_size), dtype=np.float32)
             kernel[kernel_size // 2, :] = 1.0 / kernel_size
-            print(magnitude, angle, kernel)
 
             center = (kernel_size / 2, kernel_size / 2)
             rotation_matrix = cv2.getRotationMatrix2D(center, angle * angle_range, 1)
@@ -450,7 +604,6 @@ def generate_motion_blur_image(video_id, blur_strength, blur_transparency, frame
             break
 
         start = timer()
-        print(current_frame)
 
         next_index = current_frame + 1 + frame_skip
         if next_index >= len(frames_paths):
@@ -571,7 +724,8 @@ def average_out_angle_gpu(angles):
 
 
 def get_angle_cpu(delta):
-    return (np.degrees(np.arctan2(delta[0], delta[1])) + 360 + 180) % 360
+    angle = np.degrees(np.arctan2(delta[1], delta[0]))
+    return np.round(angle, 1)
 
 
 def get_magnitude_gpu(delta, roi):
@@ -852,7 +1006,6 @@ def create_multiple_instance_effect_unified(
             fg_folder = get_foreground_temp_image_folder(video_id, object_count)
 
             fg_frames = sorted(Path(fg_folder).glob("*.png"))
-            print(len(fg_frames))
             if not fg_frames:
                 raise ValueError("No frames found in foreground/background folders.")
 
@@ -946,7 +1099,6 @@ def create_action_line_effect(video_id, thickness, start_percentage, smoothing_f
         frame_folder_paths.append(frame_folder_path)
         frames_paths = sorted(sv.list_files_with_extensions(directory=frame_folder_path, extensions=["png"]))
         frame_count = len(frames_paths) - 1
-        print(frame_count)
         if frame_count > last_frame_id:
             last_frame_id = frame_count
 
@@ -1026,7 +1178,6 @@ def create_action_line_effect(video_id, thickness, start_percentage, smoothing_f
         g = int(color[3:5], 16)
         b = int(color[5:7], 16)
         a = min(float(int(color[7:9], 16)) / 255, 0.999)
-        print(r, g, b, a, 1-a)
 
         overlay = resulting_image.copy()
 

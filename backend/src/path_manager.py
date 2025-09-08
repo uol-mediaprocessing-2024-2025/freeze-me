@@ -25,8 +25,8 @@ def get_config_path():
     prefix_path = Path.cwd()
     print(prefix_path)
     print(os.path.dirname(prefix_path))
-    if prefix_path.parent.__eq__("backend"):
-        prefix_path = prefix_path.parent
+    #if prefix_path.parent.__eq__("backend"):
+    #    prefix_path = prefix_path.parent
     match path:
         case "large":
             path = prefix_path.joinpath(CONFIG_PATH).joinpath("sam2.1_hiera_l.yaml").absolute()
@@ -45,8 +45,8 @@ def get_checkpoint_path():
         print("Possible values are: large, b_plus, small, tiny")
         print("Defaulting to small")
     prefix_path = Path.cwd()
-    if prefix_path.parent.__eq__("backend"):
-        prefix_path = prefix_path.parent
+    #if prefix_path.parent.__eq__("backend"):
+    #    prefix_path = prefix_path.parent
     match path:
         case "large":
             path = prefix_path.joinpath(CHECKPOINT_PATH).joinpath("sam2.1_hiera_large.pt").absolute()

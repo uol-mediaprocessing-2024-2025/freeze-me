@@ -73,6 +73,7 @@ async def get_video(video_id: str):
 @app.post("/upload-background")
 async def upload_background(file: UploadFile = File(...), video_id: str = Form(...)):
     try:
+        print(f"Uploading background for: {video_id}")
         background_path = await save_background(file, video_id)
         return FileResponse(background_path, media_type="image/jpeg")
     except Exception as e:
@@ -83,6 +84,7 @@ async def upload_background(file: UploadFile = File(...), video_id: str = Form(.
 
 @app.post("/set-background-type")
 async def set_current_background_type(video_id: str = Form(...), background_type: str = Form(...)):
+    print(f"Setting background type to: {background_type}")
     if background_type == "custom":
         background = BackgroundType.CUSTOM
     elif background_type == "transparent":
@@ -113,12 +115,9 @@ async def get_current_background_type(video_id):
 @app.get("/get-motion-blur-preview")
 async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_transparency: float, frame_skip: int):
     try:
-        print("Generating motion blur preview with ", blur_strength, blur_transparency, frame_skip)
-        start = timer()
+        print(f"Getting motion blur preview for: {video_id}")
+        print("Using settings (strength, transparency, frame_skip): ", blur_strength, blur_transparency, frame_skip)
         image_path = await create_motion_blur_image(video_id, blur_strength, blur_transparency, frame_skip)
-        end = timer()
-        print("--- Total Generation Time: %s seconds ---" % (end - start))
-        print("-----------------------------------------------------------")
 
         return FileResponse(image_path, media_type="image/png")
     except Exception as e:
@@ -156,7 +155,6 @@ async def total_frame_count(video_id: str):
 async def get_first_frame_of_video(video_id: str):
     try:
         await initialize_segmentation(video_id)
-        print("Successfully initialized segmentation")
         set_current_step(video_id, Step.SEGMENTATION)
         return JSONResponse(status_code=200, content="")
     except Exception as e:
@@ -189,19 +187,13 @@ async def get_segmentation_result(video_id):
             content={"message": "Failed to get first frame", "error": str(e)},
         )
 
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-
 @app.post("/cut-video")
 async def cut_video_endpoint(video_id: Annotated[str, Form()], start_time: Annotated[float, Form()], end_time: Annotated[float, Form()]):
 
     try:
-        print(video_id, start_time, end_time)
-
+        print(f"Cutting video: {video_id}")
+        print(f"From: {start_time}, To: {end_time}")
         cut_video_path = await cut_video(video_id, start_time, end_time)
-        print("Created cut_video at path:" + cut_video_path.__str__())
-
         return FileResponse(cut_video_path, media_type="video/mp4")
 
     except Exception as e:
@@ -298,6 +290,8 @@ async def multiple_instance_effect(
     frame_reference: str = "last",  # "first", "middle" oder "last"
     frame_offset: int = 0  # Optionaler Offset für den Referenzframe
 ):
+    print(f"Creating multiple instances effect for: {video_id}")
+    print(f"Using settings (instance_count,frame_skip,transparency_mode,transparency_strength,frame_reference,frame_offset): {instance_count}, {frame_skip}, {transparency_mode}, {transparency_strength}, {frame_reference}, {frame_offset}")
     try:
         create_all_paths(video_id)
         output_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
@@ -320,6 +314,8 @@ async def action_line_effect(
     smoothing_factor: int,
     color: str
 ):
+    print(f"Creating action line effect for: {video_id}")
+    print(f"Using settings (thickness,start_percentage,smoothing_factor,color): {thickness}, {start_percentage}, {smoothing_factor}, {color}")
     try:
         create_all_paths(video_id)
         create_action_line_effect(video_id, thickness, start_percentage, smoothing_factor, color)
@@ -374,3 +370,7 @@ async def apply_final_effects(video_id: Annotated[str, Form()], effect_type: Ann
             status_code=500,
             content={"message": "Failed to apply final effects", "error": str(e)}
         )
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
