@@ -2,7 +2,7 @@
 import { reactive } from "vue";
 import router from "@/router";
 import axios from "axios";
-import { store } from "@/store.js";
+import store from "@/store.js";
 
 const ageOptions = [
   { value: "u18", label: "Unter 18" },
@@ -15,10 +15,9 @@ const ageOptions = [
   { value: "na", label: "Keine Angabe" },
 ];
 
-const genderOptions = [
-  { value: "weiblich", label: "Weiblich" },
-  { value: "maennlich", label: "Männlich" },
-  { value: "divers", label: "Divers / nichtbinär" },
+const colorBlindOptions = [
+  { value: "color", label: "Farbschwäche/-blindheit" },
+  { value: "nothing", label: "Nichts" },
   { value: "na", label: "Keine Angabe" },
 ];
 
@@ -46,20 +45,11 @@ const frequencyOptions = [
   { value: "na", label: "Keine Angabe" },
 ];
 
-const competencyOptions = [
-  { value: "sehr_erfahren", label: "Sehr erfahren" },
-  { value: "eher_erfahren", label: "Eher erfahren" },
-  { value: "weniger_erfahren", label: "Weniger erfahren" },
-  { value: "gar_nicht", label: "Gar nicht erfahren" },
-  { value: "na", label: "Keine Angabe" },
-];
-
 const form = reactive({
   age: "",
-  gender: "",
+  colorBlind: "",
   education: "",
   frequency: "",
-  competency: "",
 });
 
 function normalizeEmpty(v) {
@@ -72,18 +62,16 @@ const continue_to_part_one = async () => {
     const user_path = "user_path=" + store.user_path;
     console.log(user_path);
     const age = "&age=" + normalizeEmpty(form.age);
-    const gender = "&gender=" + normalizeEmpty(form.gender);
+    const colorBlind = "&color_blind=" + normalizeEmpty(form.colorBlind);
     const education = "&education=" + normalizeEmpty(form.education);
     const frequency = "&frequency=" + normalizeEmpty(form.frequency);
-    const competency = "&competency=" + normalizeEmpty(form.competency);
     const answer = await axios.get(
       `${store.apiUrl}/send_demographic?` +
         user_path +
         age +
-        gender +
+        colorBlind +
         education +
-        frequency +
-        competency,
+        frequency,
       {
         responseType: "json",
       }
@@ -98,18 +86,21 @@ const continue_to_part_one = async () => {
 };
 
 function handleReset() {
-  form.alter = "";
-  form.geschlecht = "";
-  form.bildungsstand = "";
-  form.nutzungshaeufigkeit = "";
-  form.kompetenz = "";
+  form.age = "";
+  form.colorBlind = "";
+  form.education = "";
+  form.frequency = "";
 }
 </script>
 
 <template>
   <main>
     <h1>Demographische Fragen</h1>
-    <p>Im Folgendem stellen wir Ihnen ein paar Fragen zu Ihrer Person.</p>
+    <p>
+      Bitte beantworten Sie im Folgenden einige allgemeine Fragen. Die Angaben
+      sind anonym und dienen ausschließlich dazu, die Ergebnisse der Studie
+      besser einzuordnen.
+    </p>
     <form
       class="dfb"
       @submit.prevent="continue_to_part_one"
@@ -118,81 +109,57 @@ function handleReset() {
     >
       <!-- Alter -->
       <div class="dfb_field">
-        <label for="age">Alter</label>
-        <select id="age" v-model="form.age" :aria-describedby="'age-help'">
-          <option value="">— Bitte wählen —</option>
-          <option v-for="opt in ageOptions" :key="opt.value" :value="opt.value">
-            {{ opt.label }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Geschlecht -->
-      <div class="dfb_field">
-        <label for="gender">Geschlecht</label>
-        <select id="gender" v-model="form.gender">
-          <option value="">— Bitte wählen —</option>
-          <option
-            v-for="opt in genderOptions"
-            :key="opt.value"
-            :value="opt.value"
-          >
-            {{ opt.label }}
-          </option>
-        </select>
+        <span class="dfb_label">Wie alt sind Sie?</span>
+        <div class="radio-group">
+          <label v-for="opt in ageOptions" :key="opt.value">
+            <input type="radio" :value="opt.value" v-model="form.age" />
+            <span class="radio-label">{{ opt.label }}</span>
+          </label>
+        </div>
       </div>
 
       <!-- Bildungsstand -->
       <div class="dfb_field">
-        <label for="education">Bildungsstand</label>
-        <select id="education" v-model="form.education">
-          <option value="">— Bitte wählen —</option>
-          <option
-            v-for="opt in educationOptions"
-            :key="opt.value"
-            :value="opt.value"
-          >
-            {{ opt.label }}
-          </option>
-        </select>
+        <span class="dfb_label">Was ist Ihr höchster Abschluss?</span>
+        <div class="radio-group">
+          <label v-for="opt in educationOptions" :key="opt.value">
+            <input type="radio" :value="opt.value" v-model="form.education" />
+            <span class="radio-label">{{ opt.label }}</span>
+          </label>
+        </div>
       </div>
 
       <!-- Nutzungshäufigkeit -->
       <div class="dfb_field">
-        <label for="frequency">Nutzungshäufigkeit digitaler Geräte</label>
-        <select id="frequency" v-model="form.frequency">
-          <option value="">— Bitte wählen —</option>
-          <option
-            v-for="opt in frequencyOptions"
-            :key="opt.value"
-            :value="opt.value"
-          >
-            {{ opt.label }}
-          </option>
-        </select>
+        <span class="dfb_label">
+          Wie häufig schauen Sie Videos auf Plattformen wie YouTube, TikTok oder
+          Streamingdiensten?
+        </span>
+        <div class="radio-group">
+          <label v-for="opt in frequencyOptions" :key="opt.value">
+            <input type="radio" :value="opt.value" v-model="form.frequency" />
+            <span class="radio-label">{{ opt.label }}</span>
+          </label>
+        </div>
       </div>
 
-      <!-- Kompetenzeinschätzung -->
+      <!-- Farbblindheit -->
       <div class="dfb_field">
-        <label for="competency"
-          >Kompetenzeinschätzung (digitale Geräte/Software)</label
+        <span class="dfb_label"
+          >Haben Sie eine Farbschwäche oder -blindheit?</span
         >
-        <select id="competency" v-model="form.competency">
-          <option value="">— Bitte wählen —</option>
-          <option
-            v-for="opt in competencyOptions"
-            :key="opt.value"
-            :value="opt.value"
-          >
-            {{ opt.label }}
-          </option>
-        </select>
+        <div class="radio-group">
+          <label v-for="opt in colorBlindOptions" :key="opt.value">
+            <input type="radio" :value="opt.value" v-model="form.colorBlind" />
+            <span class="radio-label">{{ opt.label }}</span>
+          </label>
+        </div>
       </div>
 
+      <p>Vielen Dank für das Beantworten der Fragen.</p>
       <p>
-        Vielen Dank für das Beantworten der Fragen. Wenn Sie bereit sind können
-        Sie mit einen Klick auf den Weiter-Knopf zum ersten Teil der Studie
-        gelangen.
+        Wenn Sie bereit sind können Sie mit einen Klick auf den Weiter-Knopf zum
+        ersten Teil der Studie gelangen.
       </p>
 
       <footer class="dfb_actions">
@@ -209,6 +176,9 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  max-width: 700px;
+  justify-self: center;
+  align-self: center;
 }
 
 .continue-button {
@@ -246,33 +216,41 @@ h1 {
   margin-top: 1em;
 }
 
-.dfb_header h2 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.125rem;
-}
-
-.dfb_header p {
-  margin: 0 0 1rem 0;
-  color: var(--muted);
-  font-size: 0.9375rem;
-}
-
 .dfb_field {
   display: grid;
-  gap: 0.375rem;
-  margin-bottom: var(--gap);
+  gap: 0.5rem;
+  margin-bottom: 1em;
 }
 
-label {
+.dfb_field:last-of-type {
+  margin-bottom: 2em;
+}
+
+.dfb_label {
   font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 1.4em;
 }
 
-select {
-  padding: 0.6rem 0.75rem;
-  border-radius: 10px;
-  border: var(--border);
-  background: #fff;
-  font-size: 0.98rem;
+.radio-group {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.radio-group .radio-label {
+  font-size: 1.3em;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.radio-group input {
+  font-size: 2em;
 }
 
 .dfb_actions {
@@ -280,7 +258,6 @@ select {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0.5rem;
 }
 
 .dfb_btn {
@@ -296,6 +273,7 @@ select {
 
 .dfb_btn:hover {
   background-color: #0e207f;
+  color: #fff;
 }
 
 .dfb_btn-ghost {

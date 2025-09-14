@@ -1,7 +1,17 @@
 <script setup>
-import { computed, defineEmits } from "vue";
+import { computed, defineEmits, defineProps } from "vue";
 
 const emit = defineEmits(["update:modelValue", "submit"]);
+
+const props = defineProps([
+  "modelValue",
+  "rows",
+  "src",
+  "alt",
+  "caption",
+  "placeholder",
+  "buttonText",
+]);
 
 const idTextarea = computed(
   () => `textarea-${Math.random().toString(36).slice(2, 9)}`
@@ -13,6 +23,7 @@ function onInput(e) {
 
 function onSubmit() {
   emit("submit");
+  console.log(props.src);
 }
 </script>
 
@@ -28,12 +39,11 @@ function onSubmit() {
       class="c-textarea"
       :rows="rows"
       :placeholder="placeholder"
-      :disabled="disabled"
       :value="modelValue"
       @input="onInput"
     ></textarea>
 
-    <button class="c-btn" type="button" :disabled="disabled" @click="onSubmit">
+    <button class="c-btn" type="button" @click="onSubmit">
       {{ buttonText }}
     </button>
   </div>
@@ -46,21 +56,21 @@ function onSubmit() {
   align-items: center; /* Bild/Text mittig ausrichten */
   gap: 12px;
   padding: 16px;
-  max-width: 700px;
+  max-width: 800px;
   margin: 0 auto;
 }
 
 /* Feste Pixelgröße fürs Bild */
 .c-img {
-  width: 640px; /* feste Pixelbreite */
-  height: 360px; /* feste Pixelhöhe */
+  width: 1280px; /* feste Pixelbreite */
+  height: 720px; /* feste Pixelhöhe */
   object-fit: cover; /* Bild passend zuschneiden */
   display: block;
 }
 
 /* kleiner Text unter dem Bild */
 .c-caption {
-  font-size: 1rem;
+  font-size: 1.4em;
   line-height: 1.3;
   color: #000;
   text-align: left;
@@ -78,7 +88,9 @@ function onSubmit() {
   font: inherit;
   resize: vertical;
   outline: none;
+  font-size: 1.1em;
 }
+
 .c-textarea:focus {
   border-color: #7c93ff;
   box-shadow: 0 0 0 3px rgba(124, 147, 255, 0.25);
@@ -95,10 +107,13 @@ function onSubmit() {
   background: #1e40af;
   color: #fff;
   transition: filter 120ms ease;
+  font-size: 1.2em;
 }
+
 .c-btn:hover {
   filter: brightness(1.05);
 }
+
 .c-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

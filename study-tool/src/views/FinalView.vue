@@ -5,10 +5,6 @@
     <h1>Vielen Dank, dass Sie an dieser Studie teilgenommen haben.</h1>
     <p>Ihre Antworten wurden erfolgreich gespeichert.</p>
     <p>
-      Mit Ihrer Teilnahme leisten Sie einen wichtigen Beitrag zum besseren
-      Verständnis der Wahrnehmung von Bildern und Videos.
-    </p>
-    <p>
       Wenn Sie Fragen oder Anmerkungen zur Studie haben, wenden Sie sich bitte
       an die Studienleitung.
     </p>

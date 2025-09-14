@@ -2,7 +2,7 @@
 import { onMounted, ref } from "vue";
 import PartOneQuestion from "../components/PartOneQuestion.vue";
 import axios from "axios";
-import { store } from "@/store";
+import store from "@/store.js";
 import router from "@/router";
 
 const text = ref("");
@@ -67,7 +67,7 @@ const load_next_image = async () => {
     caption="Was glauben Sie, passiert in dem Video, dass durch dieses Bild zusammengefasst wird?"
     v-model="text"
     :rows="6"
-    placeholder="Ich glaube in den Video..."
+    placeholder="Möglichst detaillierte Beschreibung..."
     buttonText="Weiter"
     @submit="handleSubmit"
   />
@@ -80,10 +80,18 @@ const load_next_image = async () => {
         grob zusammenfasst.
       </p>
       <p>
-        Ihre Aufgabe besteht darin, in einem Textfeld zu beschreiben, was Sie
-        glauben, in dem dazugehörigen Video zu sehen wäre. Es gibt hierbei keine
-        richtigen oder falschen Antworten – entscheidend ist allein Ihre
-        persönliche Einschätzung.
+        Ihre Aufgabe besteht darin, das Bild genau zu betrachten und
+        anschließend in dem Textfeld unter dem Bild möglichst detailliert zu
+        beschreiben, was in dem Video passiert. Anschließend bestätigen Sie Ihre
+        Beschreibung mit dem Weiter-Knopf.
+      </p>
+      <p>
+        Es gibt bei dieser Aufgabe keine richtigen oder falschen Antworten.
+        Wichtig ist nur Ihre persönliche Einschätzung.
+      </p>
+      <p>
+        Es gibt fünf Durchläufe. Danach beginnt der 2. Teil der Studie, der dann
+        entsprechend erklärt wird.
       </p>
     </div>
     <button class="ready-button" @click="() => (ready = true)">Bereit</button>

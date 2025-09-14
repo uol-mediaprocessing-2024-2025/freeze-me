@@ -1,12 +1,71 @@
-<!-- MediaChoice.vue -->
+<script setup>
+import { computed, defineEmits, defineProps, ref } from "vue";
+
+const props = defineProps([
+  "videoSrc",
+  "videoPoster",
+  "images",
+  "initialTitle",
+  "imagesTitle",
+  "proceedButtonLabel",
+  "codeButtonLabel",
+  "confirmButtonLabel",
+  "showConfirmButton",
+  "hint",
+  "startOnImages",
+  "preselectedId",
+]);
+
+const emit = defineEmits(["proceed", "confirmSelection", "imageSelected"]);
+
+const showVideo = ref(!(props.startOnImages ?? false));
+
+const selectedId = ref(props.preselectedId ?? null);
+
+const proceedButtonLabel = computed(
+  () => props.proceedButtonLabel ?? "Bilder anzeigen"
+);
+const confirmButtonLabel = computed(
+  () => props.confirmButtonLabel ?? "Auswahl bestätigen"
+);
+
+const initialTitle = computed(() => props.initialTitle ?? "Einführungsvideo");
+const imagesTitle = computed(
+  () => props.imagesTitle ?? "Bitte wähle ein Bild aus"
+);
+
+function handleProceed() {
+  showVideo.value = false;
+  for (const image of props.images) {
+    console.log(image);
+  }
+  console.log(props.images);
+  emit("proceed");
+}
+
+function isSelected(img) {
+  // XOR: genau ein Element – selectedId hält die aktuelle Wahl
+  return (img.id ?? props.images.indexOf(img)) === selectedId.value;
+}
+
+function select(img) {
+  const id = img.id ?? props.images.indexOf(img);
+  selectedId.value = id;
+  emit("imageSelected", { id, item: img });
+}
+
+function confirm() {
+  emit("confirmSelection", selectedId);
+  showVideo.value = true;
+  selectedId.value = null;
+}
+</script>
+
 <template>
   <section class="mc">
-    <!-- Headline above video or images -->
-    <h2 class="mc__title" v-if="showVideo">{{ initialTitle }}</h2>
-    <h2 class="mc__title" v-else>{{ imagesTitle }}</h2>
-
     <!-- Initial video view -->
     <div v-if="showVideo" class="mc__videoWrap">
+      <h2 class="mc__title">{{ initialTitle }}</h2>
       <video
         class="mc__video"
         :src="videoSrc"
@@ -20,17 +79,14 @@
           class="mc__btn mc__btn--primary"
           @click="handleProceed"
         >
-          {{ proceedButtonLabel }}
-        </button>
-
-        <button type="button" class="mc__btn" @click="$emit('codeClicked')">
-          {{ codeButtonLabel }}
+          <span class="button-text">{{ proceedButtonLabel }}</span>
         </button>
       </div>
     </div>
 
     <!-- Image choice view -->
     <div v-else class="mc__choices">
+      <h2 class="mc__title">{{ imagesTitle }}</h2>
       <p class="mc__hint" v-if="hint">{{ hint }}</p>
 
       <ul class="mc__grid" role="list">
@@ -46,8 +102,8 @@
           >
             <img
               class="mc__img"
-              :src="img.src"
-              :alt="img.alt || 'Auswahlbild ' + (idx + 1)"
+              :src="img"
+              :alt="'Auswahlbild ' + (idx + 1)"
               draggable="false"
             />
             <span class="mc__check" aria-hidden="true">✓</span>
@@ -56,94 +112,20 @@
       </ul>
 
       <div class="mc__actions">
-        <button type="button" class="mc__btn" @click="$emit('codeClicked')">
-          {{ codeButtonLabel }}
-        </button>
-
         <button
           type="button"
           class="mc__btn"
-          :disabled="!selectedId"
-          @click="$emit('confirmSelection', selectedId)"
+          :disabled="selectedId == null"
+          @click="confirm"
           v-if="showConfirmButton"
           title="Auswahl bestätigen"
         >
-          {{ confirmButtonLabel }}
+          <span class="button-text">{{ confirmButtonLabel }}</span>
         </button>
       </div>
     </div>
   </section>
 </template>
-
-<script setup lang="ts">
-import { computed, ref } from "vue";
-
-type ImageItem = {
-  id?: string | number;
-  src: string;
-  alt?: string;
-};
-
-const props = defineProps<{
-  videoSrc: string;
-  videoPoster?: string;
-  images: ImageItem[]; // Erwartet 3 Einträge
-  initialTitle?: string;
-  imagesTitle?: string;
-  proceedButtonLabel?: string;
-  codeButtonLabel?: string;
-  confirmButtonLabel?: string;
-  showConfirmButton?: boolean;
-  hint?: string;
-  startOnImages?: boolean;
-  preselectedId?: string | number | null;
-}>();
-
-const emit = defineEmits<{
-  (e: "proceed"): void;
-  (
-    e: "imageSelected",
-    payload: { id: string | number | undefined; item: ImageItem }
-  ): void;
-  (e: "confirmSelection", id: string | number | undefined): void;
-  (e: "codeClicked"): void;
-}>();
-
-const showVideo = ref(!(props.startOnImages ?? false));
-
-const selectedId = ref<string | number | undefined | null>(
-  props.preselectedId ?? null
-);
-
-const proceedButtonLabel = computed(
-  () => props.proceedButtonLabel ?? "Bilder anzeigen"
-);
-const codeButtonLabel = computed(() => props.codeButtonLabel ?? "Code");
-const confirmButtonLabel = computed(
-  () => props.confirmButtonLabel ?? "Auswahl bestätigen"
-);
-
-const initialTitle = computed(() => props.initialTitle ?? "Einführungsvideo");
-const imagesTitle = computed(
-  () => props.imagesTitle ?? "Bitte wähle ein Bild aus"
-);
-
-function handleProceed() {
-  showVideo.value = false;
-  emit("proceed");
-}
-
-function isSelected(img: ImageItem) {
-  // XOR: genau ein Element – selectedId hält die aktuelle Wahl
-  return (img.id ?? props.images.indexOf(img)) === selectedId.value;
-}
-
-function select(img: ImageItem) {
-  const id = img.id ?? props.images.indexOf(img);
-  selectedId.value = id;
-  emit("imageSelected", { id, item: img });
-}
-</script>
 
 <style scoped>
 .mc {
@@ -151,22 +133,19 @@ function select(img: ImageItem) {
   gap: 1rem;
 }
 
-.mc__title {
-  margin: 0;
-  font-size: 1.25rem;
-  line-height: 1.2;
-}
-
 .mc__videoWrap {
-  display: grid;
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .mc__video {
-  width: 100%;
-  max-height: 60vh;
-  border-radius: 12px;
+  width: 720px;
+  max-height: 1280px;
   background: #000;
+  margin-bottom: 3em;
+  margin-top: 2em;
 }
 
 .mc__hint {
@@ -184,23 +163,26 @@ function select(img: ImageItem) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.button-text {
+  font-size: 1.4em;
+}
+
 .mc__card {
   position: relative;
   display: grid;
   place-items: center;
   width: 100%;
-  aspect-ratio: 4 / 3;
   border: 2px solid #e5e7eb;
-  border-radius: 12px;
   background: #fff;
   cursor: pointer;
   transition: border-color 120ms ease, box-shadow 120ms ease,
     transform 60ms ease;
   outline: none;
+  padding: 0;
 }
 
 .mc__card:focus-visible {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 0 0 3px rgba(10, 50, 146, 0.35);
 }
 
 .mc__card:hover {
@@ -216,7 +198,6 @@ function select(img: ImageItem) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 10px;
   user-select: none;
   pointer-events: none;
 }
@@ -239,25 +220,26 @@ function select(img: ImageItem) {
 .mc__actions {
   display: flex;
   gap: 0.5rem;
-  justify-content: flex-start;
+  justify-content: center;
   flex-wrap: wrap;
 }
 
 .mc__btn {
   appearance: none;
-  border: 1px solid #d1d5db;
-  background: #fff;
+  background-color: #1e40af;
+  color: #fff;
   border-radius: 999px;
-  padding: 0.55rem 0.9rem;
+  margin-top: 2em;
+  padding: 1em 3em;
   font: inherit;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease,
-    transform 40ms ease;
+  justify-self: center;
+  align-self: center;
 }
 
 .mc__btn:hover {
-  background: #f6f7f9;
-  border-color: #c7cad1;
+  background-color: #103090;
+  color: #fff;
 }
 
 .mc__btn:active {
@@ -266,12 +248,13 @@ function select(img: ImageItem) {
 
 .mc__btn:disabled {
   opacity: 0.6;
+  background: #f6f7f9;
+  color: #c7cad1;
   cursor: not-allowed;
 }
 
 .mc__btn--primary {
-  border-color: #2563eb;
-  background: #2563eb;
-  color: white;
+  background-color: #1e40af;
+  color: #fff;
 }
 </style>

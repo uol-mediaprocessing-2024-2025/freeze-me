@@ -1,7 +1,8 @@
 <script setup>
 import { onMounted, ref } from "vue";
+import PartTwoQuestion from "@/components/PartTwoQuestion.vue";
 import axios from "axios";
-import { store } from "@/store";
+import store from "@/store.js";
 import router from "@/router";
 
 const ready = ref(false);
@@ -12,6 +13,8 @@ const current_thumbnail = ref(null);
 const correct = ref([]);
 const image_paths = ref([]);
 const video_paths = ref([]);
+const thumbnail_paths = ref([]);
+const currentSelection = ref(null);
 
 onMounted(async () => {
   const answer = await axios.get(`${store.apiUrl}/get_part_two_data`, {
@@ -22,15 +25,17 @@ onMounted(async () => {
   const images = [];
   const videos = [];
   const answers = [];
+  const thumbnails = [];
   for (const entry of entries) {
     images.push(entry["image_paths"]);
-    videos.push(entry["videos_path"]);
+    videos.push(entry["video_path"]);
     answers.push(entry["choice"]);
+    thumbnails.push(entry["thumbnail"]);
   }
   image_paths.value = images;
   video_paths.value = videos;
   correct.value = answers;
-
+  thumbnail_paths.value = thumbnails;
   console.log(image_paths);
   await load_next_image();
 });
@@ -51,23 +56,28 @@ const load_next_image = async () => {
     current_images.value = images;
   }
 
-  const answer = await axios.get(
+  const video_answer = await axios.get(
     `${store.apiUrl}/get_video?path=` + video_paths.value[count.value],
     {
       responseType: "blob",
     }
   );
+  current_video.value = URL.createObjectURL(video_answer.data);
 
-  current_video.value = URL.createObjectURL(answer.data);
-
-  current_thumbnail.value = "thumbnails/" + count.value + ".png";
+  const thumbnail_answer = await axios.get(
+    `${store.apiUrl}/get_image?path=` + thumbnail_paths.value[count.value],
+    {
+      responseType: "blob",
+    }
+  );
+  current_thumbnail.value = URL.createObjectURL(thumbnail_answer.data);
 };
 
 async function handleSubmit() {
   const user_path = "?user_path=" + store.user_path;
   const image_path = "&video_path=" + video_paths.value[count.value];
-  const user_answer = "&answer=" + 0;
-  const correct_answer = "&correct=" + correct.value;
+  const user_answer = "&answer=" + currentSelection.value;
+  const correct_answer = "&correct=" + correct.value[count.value];
   console.log(user_path);
   console.log(image_path);
   console.log(user_answer);
@@ -89,49 +99,61 @@ async function handleSubmit() {
   }
 }
 
-function onCodeClicked() {
-  // Hier „den Code, den du schreiben würdest“ einhängen:
-  // z.B. Modal öffnen, Snippet kopieren, Routing, etc.
-  console.log("Code-Button geklickt");
+function isReady() {
+  ready.value = true;
 }
 
 function onImageSelected(payload) {
-  console.log("Gewählt:", payload.id, payload.item);
+  console.log("Gewählt:", payload.id);
+  currentSelection.value = payload.id;
 }
 </script>
 
 <template>
   <main>
-    <div v-if="!ready">
-      <h1>Teil 1</h1>
-      <p>Im zweiten Teil der Studie sehen Sie ebenfalls fünf Durchläufe.</p>
-      <p>
-        Zunächst wird Ihnen in jedem Durchlauf ein kurzes Video gezeigt. Sie
-        können das Video beliebig oft abspielen, bis Sie sich sicher fühlen.
-      </p>
-      <p>
-        Wenn Sie anschließend auf „Bereit“ klicken, erscheinen drei Thumbnails:
-      </p>
-      <p>- eines gehört zu dem Video, das Sie soeben gesehen haben</p>
-      <p>- zwei stammen aus ähnlichen, aber anderen Videos</p>
-      <p>
-        Ihre Aufgabe besteht darin, das Thumbnail auszuwählen, das zum gezeigten
-        Video gehört, und Ihre Auswahl zu bestätigen.
-      </p>
-      <button class="ready-button" @click="() => (ready = true)">Bereit</button>
+    <div v-if="!ready" class="explanation-container">
+      <h2>Teil 2</h2>
+      <div class="explanation">
+        <p>
+          Im zweiten Teil der Studie gibt es ebenfalls fünf Durchläufe. Zunächst
+          wird Ihnen in jedem Durchlauf ein kurzes Video gezeigt. Sie können das
+          Video beliebig oft abspielen, bis Sie vertraut mit dem Videoinhalt
+          sind.
+        </p>
+        <p>
+          Wenn Sie anschließend auf „Bereit“ klicken, erscheinen drei
+          Thumbnails:
+        </p>
+        <p class="bullet-point">
+          - eines gehört zu dem Video, das Sie soeben gesehen haben
+        </p>
+        <p class="bullet-point">
+          - zwei stammen aus ähnlichen, aber anderen Videos
+        </p>
+        <p>
+          Ihre Aufgabe ist es das Thumbnail zu wählen, welches zu dem Video
+          gehört, dass Sie gesehen haben. Sie können Ihre Wahl vor dem
+          Bestätigen jederzeit ändern. Fürs Bestätigen klicken Sie auf den
+          Bestätigen-Knopf.
+        </p>
+        <p>
+          Auch in diesem Teil müssen Sie sich keine Sorge machen, etwas falsches
+          zu wählen. Es geht hierbei nur um Ihre persönliche Einschätzung.
+        </p>
+      </div>
+      <button class="ready-button" @click="isReady">Bereit</button>
     </div>
     <div v-if="ready">
-      <PartTwoView
+      <PartTwoQuestion
         :video-src="current_video"
         :video-poster="current_thumbnail"
         :images="current_images"
         initial-title="Schauen Sie sich das Video an."
-        images-title="Wähle eines der drei Bilder:"
+        images-title="Wählen Sie eines der drei Bilder:"
         proceed-button-label="Weiter zu den Bildern"
         :show-confirm-button="true"
         confirm-button-label="Bestätigen"
-        hint="Du kannst deine Auswahl jederzeit ändern."
-        @codeClicked="onCodeClicked"
+        hint=""
         @imageSelected="onImageSelected"
         @confirmSelection="handleSubmit"
       />
@@ -139,4 +161,42 @@ function onImageSelected(payload) {
   </main>
 </template>
 
-<style scoped></style>
+<style scoped>
+.explanation-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+p {
+  text-align: justify;
+}
+
+h2 {
+  margin-bottom: 2em;
+}
+
+.explanation {
+  max-width: 45em;
+}
+
+.bullet-point {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+.ready-button {
+  padding: 1em 2em;
+  background-color: #1e40af;
+  color: #fff;
+  border-radius: 0.5em;
+  margin: 1em;
+  font-size: 1.4em;
+  cursor: pointer;
+}
+
+.ready-button:hover {
+  background-color: #0e207f;
+}
+</style>

@@ -1,6 +1,6 @@
 <script setup>
 import router from "@/router";
-import { store } from "@/store";
+import store from "@/store.js";
 import axios from "axios";
 
 const moveToDemographicQuestions = async () => {
@@ -22,29 +22,28 @@ const moveToDemographicQuestions = async () => {
 <template>
   <main>
     <h1>Bachelor-Studie</h1>
-    <h3>
+    <h2>
       Forschungsfrage: Welche Bewegungseffekte in Vorschaubildern können
       einem/einer Nutzer:in helfen, den Inhalt eines Videos zu beschreiben?
-    </h3>
+    </h2>
     <p>
       Herzlich willkommen und vielen Dank für Ihre Teilnahme an dieser Studie.
-    </p>
-    <p>
-      Ziel der Studie ist es zu untersuchen, wie Menschen Informationen aus
+      Das Ziel der Studie ist es zu untersuchen, wie Menschen Informationen aus
       Bildern und Videos wahrnehmen und einschätzen. Die gesamte Bearbeitung
       dauert etwa 30 Minuten.
     </p>
     <p>
       Ihre Angaben werden anonym gespeichert. Es werden keine personenbezogenen
-      Daten erhoben, lediglich einige wenige demografische Angaben.
+      Daten erhoben, lediglich einige wenige demografische Angaben. Die
+      Teilnahme an der Studie ist freiwillig und kann stets ohne Angabe eines
+      Grundes abgebrochen werden. Für die Teilnahme an der Studie gibt es keine
+      Vergütung oder Kompensation.
     </p>
     <p>
       Bitte nehmen Sie sich Zeit und arbeiten Sie die Aufgaben konzentriert
-      durch.
-    </p>
-    <p>
-      Wenn Sie bereit sind und keine Fragen mehr haben, können Sie auf den
-      Start-Knopf klicken.
+      durch. Bei Fragen wenden Sie sich gerne an die Studienleitung. Wenn Sie
+      bereit sind und keine Fragen mehr haben, können Sie auf den Start-Knopf
+      klicken.
     </p>
     <button class="start-button" @click="moveToDemographicQuestions">
       START
@@ -58,6 +57,9 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  max-width: 800px;
+  justify-self: center;
+  align-self: center;
 }
 
 .start-button {

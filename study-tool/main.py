@@ -9,6 +9,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from matplotlib.image import thumbnail
 from starlette.responses import FileResponse
 
 app = FastAPI()
@@ -210,16 +211,14 @@ async def upload_video():
 
 
 @app.get("/send_demographic")
-async def send_demographic_answers(user_path: str, age: str, gender: str, education: str, frequency: str,
-                                   competency: str):
+async def send_demographic_answers(user_path: str, age: str, color_blind: str, education: str, frequency: str):
     try:
         json_data = {
             "demographics": {
                 "age": age,
-                "gender": gender,
+                "color_blind": color_blind,
                 "education": education,
-                "frequency": frequency,
-                "competency": competency,
+                "frequency": frequency
             },
             "part_one": [],
             "part_two": []
@@ -258,20 +257,30 @@ async def get_image_paths_two():
         user_count = len(os.listdir("results"))
         result = part_two(user_count)
         data = []
+        count = 1
         for result in result:
-            videos_path = os.path.join("images", "part_two", result["effect"], result["video"])
-            print(os.path.abspath(videos_path))
-            file_list = os.listdir(videos_path)
+            base_path = os.path.join("images", "part_two", result["effect"], result["video"])
+            file_list = os.listdir(base_path)
             image_paths = []
-            for file in file_list:
-                image_path = os.path.join(videos_path, file)
-                image_paths.append(image_path)
+            video_name = ""
+            for i in range(len(file_list)):
+                file = file_list[i]
+                if i == result["choice"]:
+                    video_name = Path(file).stem + ".mp4"
+                image_path = os.path.join(base_path, file)
+                print(image_path)
+                image_paths.append(os.path.abspath(image_path))
+            video_path = os.path.abspath(os.path.join("video_candidates", video_name))
+            print(video_path)
+            thumbnail = os.path.abspath(os.path.join("thumbnails", count.__str__() + ".png"))
             all_data = {
                 "image_paths": image_paths,
-                "videos_path": videos_path,
+                "video_path": video_path,
                 "choice": result["choice"],
+                "thumbnail": thumbnail,
             }
             data.append(all_data)
+            count += 1
 
         return JSONResponse(status_code=200, content=data)
     except Exception as e:
