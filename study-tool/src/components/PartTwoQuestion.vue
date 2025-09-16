@@ -141,10 +141,10 @@ function confirm() {
 }
 
 .mc__video {
-  width: 720px;
-  max-height: 1280px;
+  width: 1280px;
+  max-height: 720px;
   background: #000;
-  margin-bottom: 3em;
+  margin-bottom: 1em;
   margin-top: 2em;
 }
 

@@ -52,4 +52,8 @@ p {
   font-size: 1.4em;
   text-align: center;
 }
+
+#app {
+  display: grid;
+}
 </style>

@@ -1,9 +1,9 @@
 <script setup>
-import { computed, defineEmits, defineProps } from "vue";
+import { defineEmits, defineProps } from "vue";
 
 const emit = defineEmits(["update:modelValue", "submit"]);
 
-const props = defineProps([
+defineProps([
   "modelValue",
   "rows",
   "src",
@@ -13,17 +13,15 @@ const props = defineProps([
   "buttonText",
 ]);
 
-const idTextarea = computed(
-  () => `textarea-${Math.random().toString(36).slice(2, 9)}`
-);
-
 function onInput(e) {
   emit("update:modelValue", e.target.value);
 }
 
 function onSubmit() {
   emit("submit");
-  console.log(props.src);
+  const textarea = document.getElementById("part-one-textarea");
+  console.log(textarea);
+  textarea.focus();
 }
 </script>
 
@@ -33,9 +31,9 @@ function onSubmit() {
 
     <p v-if="caption" class="c-caption">{{ caption }}</p>
 
-    <label class="c-sr" :for="idTextarea">Eingabe</label>
+    <label class="c-sr" for="part-one-textarea">Eingabe</label>
     <textarea
-      :id="idTextarea"
+      id="part-one-textarea"
       class="c-textarea"
       :rows="rows"
       :placeholder="placeholder"
