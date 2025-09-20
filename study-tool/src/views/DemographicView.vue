@@ -16,8 +16,8 @@ const ageOptions = [
 ];
 
 const colorBlindOptions = [
-  { value: "color", label: "Farbschwäche/-blindheit" },
-  { value: "nothing", label: "Nichts" },
+  { value: "color", label: "Ja" },
+  { value: "nothing", label: "Nein" },
   { value: "na", label: "Keine Angabe" },
 ];
 

@@ -14,6 +14,7 @@ const correct = ref([]);
 const image_paths = ref([]);
 const video_paths = ref([]);
 const thumbnail_paths = ref([]);
+const permutations = ref([])
 const currentSelection = ref(null);
 const loading = ref(false)
 
@@ -27,17 +28,19 @@ onMounted(async () => {
   const videos = [];
   const answers = [];
   const thumbnails = [];
+  const permutation = []
   for (const entry of entries) {
     images.push(entry["image_paths"]);
     videos.push(entry["video_path"]);
     answers.push(entry["choice"]);
     thumbnails.push(entry["thumbnail"]);
+    permutation.push(entry["permutation"])
   }
   image_paths.value = images;
   video_paths.value = videos;
   correct.value = answers;
   thumbnail_paths.value = thumbnails;
-  console.log(image_paths);
+  permutations.value = permutation
   await load_next_image();
 });
 
@@ -54,8 +57,14 @@ const load_next_image = async () => {
     );
     const image = URL.createObjectURL(answer.data);
     images.push(image);
-    current_images.value = images;
   }
+
+  const sorted_images = []
+  for (let i = 0; i < 2; i++) {
+    const id = (i + permutations.value[count.value]) % 3
+    sorted_images.push(images[id])
+  }
+  current_images.value = images;
 
   const video_answer = await api.get(
     `${store.apiUrl}/get_video?path=` + video_paths.value[count.value],
@@ -83,6 +92,8 @@ async function handleSubmit() {
     const user_answer_path = "&answer_path=" + image_paths.value[count.value][currentSelection.value];
     const correct_answer = "&correct=" + correct.value[count.value];
     const correct_answer_path = "&correct_path=" + image_paths.value[count.value][correct.value[count.value]];
+    const permutation = "&permutation=" + permutations.value[count.value];
+    const position = "&position=" + (correct.value[count.value] + permutations.value[count.value]) % 3;
     console.log(user_path);
     console.log(image_path);
     console.log(user_answer);
@@ -93,7 +104,9 @@ async function handleSubmit() {
         user_answer +
         user_answer_path +
         correct_answer +
-        correct_answer_path,
+        correct_answer_path +
+        permutation +
+        position,
       {
         responseType: "json",
       }

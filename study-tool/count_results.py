@@ -9,6 +9,7 @@ effects_amount = {}
 video_types_amount = {}
 videos_amount = {}
 choices_amount = {}
+position_amount= {}
 video_effect_combinations = {}
 video_choice_combinations = {}
 effect_choice_combinations = {}
@@ -27,6 +28,7 @@ for results_folder in results_folders:
             video_type = image_path.parent.stem
             effect = image_path.parent.parent.stem
             choice = part_two_slice["correct"]
+            position = part_two_slice["position"]
 
             if effect in effects_amount:
                 effects_amount[effect] = effects_amount[effect] + 1
@@ -44,29 +46,27 @@ for results_folder in results_folders:
                 choices_amount[choice] = choices_amount[choice] + 1
             else:
                 choices_amount[choice] = 1
+            if position in position_amount:
+                position_amount[position] = position_amount[position] + 1
+            else:
+                position_amount[position] = 1
 
             video_effect_combination = video + "_" + effect
             if video_effect_combination in video_effect_combinations:
                 video_effect_combinations[video_effect_combination] = video_effect_combinations[video_effect_combination] + 1
             else:
                 video_effect_combinations[video_effect_combination] = 1
-            video_choice_combination = video + "_" + str(choice)
+            video_choice_combination = video + "_" + str(position)
             if video_choice_combination in video_choice_combinations:
                 video_choice_combinations[video_choice_combination] = video_choice_combinations[video_choice_combination] + 1
             else:
                 video_choice_combinations[video_choice_combination] = 1
-            effect_choice_combination = effect + "_" + str(choice)
+            effect_choice_combination = effect + "_" + str(position)
             if effect_choice_combination in effect_choice_combinations:
                 effect_choice_combinations[effect_choice_combination] = effect_choice_combinations[effect_choice_combination] + 1
             else:
                 effect_choice_combinations[effect_choice_combination] = 1
-        results = {
-            "effects": effects_amount,
-            "video_types": video_types_amount,
-            "videos": videos_amount,
-            "choices": choices_amount,
-        }
-        print(results)
+        print(effect_choice_combinations)
 
 results = {
     "effects": effects_amount,
