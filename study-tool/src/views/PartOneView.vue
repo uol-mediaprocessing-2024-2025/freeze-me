@@ -1,7 +1,7 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import {onMounted, ref} from "vue";
 import PartOneQuestion from "../components/PartOneQuestion.vue";
-import axios from "axios";
+import api from "@/api";
 import store from "@/store.js";
 import router from "@/router";
 
@@ -18,11 +18,11 @@ async function handleSubmit() {
   console.log(user_path);
   console.log(image_path);
   console.log(user_answer);
-  await axios.get(
+  await api.get(
     `${store.apiUrl}/send_part_one_answer` +
-      user_path +
-      image_path +
-      user_answer,
+    user_path +
+    image_path +
+    user_answer,
     {
       responseType: "json",
     }
@@ -36,7 +36,7 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
-  const answer = await axios.get(`${store.apiUrl}/get_image_paths`, {
+  const answer = await api.get(`${store.apiUrl}/get_image_paths`, {
     responseType: "json",
   });
 
@@ -48,7 +48,7 @@ onMounted(async () => {
 const load_next_image = async () => {
   image_count.value += 1;
   const image_path = image_paths.value[image_count.value];
-  const answer = await axios.get(
+  const answer = await api.get(
     `${store.apiUrl}/get_image?path=` + image_path,
     {
       responseType: "blob",

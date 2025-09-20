@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import PartTwoQuestion from "@/components/PartTwoQuestion.vue";
-import axios from "axios";
+import api from "@/api";
 import store from "@/store.js";
 import router from "@/router";
 
@@ -15,9 +15,10 @@ const image_paths = ref([]);
 const video_paths = ref([]);
 const thumbnail_paths = ref([]);
 const currentSelection = ref(null);
+const loading = ref(false)
 
 onMounted(async () => {
-  const answer = await axios.get(`${store.apiUrl}/get_part_two_data`, {
+  const answer = await api.get(`${store.apiUrl}/get_part_two_data`, {
     responseType: "json",
   });
 
@@ -45,7 +46,7 @@ const load_next_image = async () => {
   const image_paths_to_be_loaded = image_paths.value[count.value];
   const images = [];
   for (let i = 0; i < image_paths_to_be_loaded.length; i++) {
-    const answer = await axios.get(
+    const answer = await api.get(
       `${store.apiUrl}/get_image?path=` + image_paths_to_be_loaded[i],
       {
         responseType: "blob",
@@ -56,7 +57,7 @@ const load_next_image = async () => {
     current_images.value = images;
   }
 
-  const video_answer = await axios.get(
+  const video_answer = await api.get(
     `${store.apiUrl}/get_video?path=` + video_paths.value[count.value],
     {
       responseType: "blob",
@@ -64,7 +65,7 @@ const load_next_image = async () => {
   );
   current_video.value = URL.createObjectURL(video_answer.data);
 
-  const thumbnail_answer = await axios.get(
+  const thumbnail_answer = await api.get(
     `${store.apiUrl}/get_image?path=` + thumbnail_paths.value[count.value],
     {
       responseType: "blob",
@@ -74,29 +75,40 @@ const load_next_image = async () => {
 };
 
 async function handleSubmit() {
-  const user_path = "?user_path=" + store.user_path;
-  const image_path = "&video_path=" + video_paths.value[count.value];
-  const user_answer = "&answer=" + currentSelection.value;
-  const correct_answer = "&correct=" + correct.value[count.value];
-  console.log(user_path);
-  console.log(image_path);
-  console.log(user_answer);
-  await axios.get(
-    `${store.apiUrl}/send_part_two_answer` +
-      user_path +
-      image_path +
-      user_answer +
-      correct_answer,
-    {
-      responseType: "json",
-    }
-  );
+  loading.value = true
+  try {
+    const user_path = "?user_path=" + store.user_path;
+    const image_path = "&video_path=" + video_paths.value[count.value];
+    const user_answer = "&answer=" + currentSelection.value;
+    const user_answer_path = "&answer_path=" + image_paths.value[count.value][currentSelection.value];
+    const correct_answer = "&correct=" + correct.value[count.value];
+    const correct_answer_path = "&correct_path=" + image_paths.value[count.value][correct.value[count.value]];
+    console.log(user_path);
+    console.log(image_path);
+    console.log(user_answer);
+    await api.get(
+      `${store.apiUrl}/send_part_two_answer` +
+        user_path +
+        image_path +
+        user_answer +
+        user_answer_path +
+        correct_answer +
+        correct_answer_path,
+      {
+        responseType: "json",
+      }
+    );
 
-  if (count.value < 4) {
-    await load_next_image();
-  } else {
-    router.replace("/final");
+    if (count.value < 4) {
+      await load_next_image();
+    } else {
+      router.replace("/final");
+    }
+  } catch (e) {
+    console.error(e)
   }
+
+  loading.value = false
 }
 
 function isReady() {
@@ -154,6 +166,7 @@ function onImageSelected(payload) {
         :show-confirm-button="true"
         confirm-button-label="Bestätigen"
         hint=""
+        :loading="loading"
         @imageSelected="onImageSelected"
         @confirmSelection="handleSubmit"
       />

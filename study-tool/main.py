@@ -9,7 +9,6 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from matplotlib.image import thumbnail
 from starlette.responses import FileResponse
 
 app = FastAPI()
@@ -337,13 +336,15 @@ async def send_part_one_answer(user_path: str, image_path: str, answer: str):
 
 
 @app.get("/send_part_two_answer")
-async def send_part_two_answer(user_path: str, video_path: str, answer: int, correct: int):
+async def send_part_two_answer(user_path: str, video_path: str, answer: int, answer_path: str, correct: int, correct_path: str):
     try:
         json_data = read_json(Path(os.path.join("results", user_path, "answers.json")))
         answer = {
             "video_path": video_path,
             "answer": answer,
-            "correct": correct
+            "answer_path": answer_path,
+            "correct": correct,
+            "correct_path": correct_path
         }
         json_data["part_two"].append(answer)
         write_json(Path(os.path.join("results", user_path, "answers.json")), json_data)

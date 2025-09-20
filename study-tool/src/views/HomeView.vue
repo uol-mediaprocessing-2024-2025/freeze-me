@@ -1,11 +1,11 @@
 <script setup>
 import router from "@/router";
 import store from "@/store.js";
-import axios from "axios";
+import api from "@/api";
 
 const moveToDemographicQuestions = async () => {
   try {
-    const answer = await axios.post(`${store.apiUrl}/create_user_folder`, {
+    const answer = await api.post(`${store.apiUrl}/create_user_folder`, {
       responseType: "json",
     });
     if (answer.status === 200) {

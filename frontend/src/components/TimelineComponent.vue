@@ -1,7 +1,6 @@
 <script setup>
 import {onMounted, ref, watch} from "vue";
 import {store} from "@/store.js";
-import axios from "axios";
 
 const segmentation = ref(store.steps.segmentation);
 const main_effect = ref(store.steps.mainEffect);

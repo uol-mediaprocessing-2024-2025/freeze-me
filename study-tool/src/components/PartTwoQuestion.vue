@@ -14,6 +14,7 @@ const props = defineProps([
   "hint",
   "startOnImages",
   "preselectedId",
+  "loading",
 ]);
 
 const emit = defineEmits(["proceed", "confirmSelection", "imageSelected"]);
@@ -64,6 +65,10 @@ function confirm() {
 <template>
   <section class="mc">
     <!-- Initial video view -->
+    <div v-if="loading" class="loading-container">
+      <div class="spinner"></div>
+      <p>Medien laden...</p>
+    </div>
     <div v-if="showVideo" class="mc__videoWrap">
       <h2 class="mc__title">{{ initialTitle }}</h2>
       <video
@@ -78,6 +83,7 @@ function confirm() {
           type="button"
           class="mc__btn mc__btn--primary"
           @click="handleProceed"
+          :disabled="loading"
         >
           <span class="button-text">{{ proceedButtonLabel }}</span>
         </button>
@@ -256,5 +262,36 @@ function confirm() {
 .mc__btn--primary {
   background-color: #1e40af;
   color: #fff;
+}
+
+.loading-container {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  align-content: center;
+  justify-items: center;
+  background-color: rgba(0,0,0,0.5);
+}
+
+.loading-container p {
+  color: white;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3; /* Hintergrund */
+  border-top: 4px solid #3498db; /* Vordergrund */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>

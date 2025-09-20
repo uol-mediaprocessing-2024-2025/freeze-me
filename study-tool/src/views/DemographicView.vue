@@ -1,8 +1,8 @@
 <script setup>
 import { reactive } from "vue";
 import router from "@/router";
-import axios from "axios";
 import store from "@/store.js";
+import api from "@/api";
 
 const ageOptions = [
   { value: "u18", label: "Unter 18" },
@@ -65,7 +65,7 @@ const continue_to_part_one = async () => {
     const colorBlind = "&color_blind=" + normalizeEmpty(form.colorBlind);
     const education = "&education=" + normalizeEmpty(form.education);
     const frequency = "&frequency=" + normalizeEmpty(form.frequency);
-    const answer = await axios.get(
+    const answer = await api.get(
       `${store.apiUrl}/send_demographic?` +
         user_path +
         age +
