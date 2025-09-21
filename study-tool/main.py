@@ -141,16 +141,16 @@ def get_ui_counts():
 
 def next_video_id_list(max_run=2):
     counts = get_video_counts()
-    lst = []
+    entries = {}
     for q in range(len(counts)):
         category = part_two_categories[q]
         minc = min(counts[category].values())
         candidates = [pos for pos in range(3) if counts[category][pos] == minc]
         random.shuffle(candidates)
-        chosen = candidates[0] if not lst else next((c for c in candidates
-                                                     if lst[-1] != c or max_run <= 1), candidates[0])
-        lst.append(chosen)
-    return lst
+        chosen = candidates[0] if not entries else next((c for c in candidates
+                                                     if entries.get(-1) != c or max_run <= 1), candidates[0])
+        entries[category] = chosen
+    return entries
 
 def next_video_permutation_list(image_paths):
     counts = get_ui_counts()
@@ -191,7 +191,7 @@ def part_two(p: int) -> List[Dict]:
             "effect": eff_label,
             "video_index": video_index,
             "video": vid_label,
-            "choice": choice_val[pos],
+            "choice": choice_val[vid_label],
         })
 
     return trials
