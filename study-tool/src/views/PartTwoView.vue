@@ -30,7 +30,11 @@ onMounted(async () => {
   const thumbnails = [];
   const permutation = []
   for (const entry of entries) {
-    images.push(entry["image_paths"]);
+    let entry_images = entry["image_paths"]
+    entry_images.sort()
+    console.log(entry["image_paths"])
+    console.log(entry_images)
+    images.push(entry_images);
     videos.push(entry["video_path"]);
     answers.push(entry["choice"]);
     thumbnails.push(entry["thumbnail"]);
@@ -59,12 +63,15 @@ const load_next_image = async () => {
     images.push(image);
   }
 
-  const sorted_images = []
-  for (let i = 0; i < 2; i++) {
+  const sorted_images = ['', '', '']
+  for (let i = 0; i <= 2; i++) {
     const id = (i + permutations.value[count.value]) % 3
-    sorted_images.push(images[id])
+    console.log(id)
+    sorted_images[id] = images[i]
   }
-  current_images.value = images;
+  console.log(sorted_images)
+  console.log(permutations.value)
+  current_images.value = sorted_images;
 
   const video_answer = await api.get(
     `${store.apiUrl}/get_video?path=` + video_paths.value[count.value],
@@ -86,14 +93,16 @@ const load_next_image = async () => {
 async function handleSubmit() {
   loading.value = true
   try {
+    const position_index = (correct.value[count.value] + permutations.value[count.value]) % 3
+    const answer_index = ((currentSelection.value + 3) - permutations.value[count.value]) % 3
     const user_path = "?user_path=" + store.user_path;
     const image_path = "&video_path=" + video_paths.value[count.value];
     const user_answer = "&answer=" + currentSelection.value;
-    const user_answer_path = "&answer_path=" + image_paths.value[count.value][currentSelection.value];
+    const user_answer_path = "&answer_path=" + image_paths.value[count.value][answer_index];
     const correct_answer = "&correct=" + correct.value[count.value];
     const correct_answer_path = "&correct_path=" + image_paths.value[count.value][correct.value[count.value]];
     const permutation = "&permutation=" + permutations.value[count.value];
-    const position = "&position=" + (correct.value[count.value] + permutations.value[count.value]) % 3;
+    const position = "&position=" + position_index;
     console.log(user_path);
     console.log(image_path);
     console.log(user_answer);

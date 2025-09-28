@@ -4,7 +4,6 @@ import random
 import tempfile
 import traceback
 import uuid
-from collections import Counter
 from pathlib import Path
 from typing import Any, List, Dict
 
@@ -91,17 +90,21 @@ def get_video_counts():
         "rocket-league": {0: 0, 1: 0, 2: 0},
         "street-traffic": {0: 0, 1: 0, 2: 0},
     }
+    print(results_folders)
     for results_folder in results_folders:
         answer_json = os.path.join(folder, results_folder, "answers.json")
+        print(answer_json)
         with open(answer_json, "r") as f:
             answer = json.load(f)
             part_two_data = answer["part_two"]
 
             for i in range(part_two_data.__len__()):
                 part_two_slice = part_two_data[i]
-                category = Path(part_two_slice["correct_path"]).parent.stem.__str__()
+                category = Path(part_two_slice["correct_path"].replace('\\', '/')).parent.stem.__str__()
                 choice = part_two_slice["correct"]
-                category_counts[category][choice] += 1
+                print("category, choice:", category, choice)
+                if category != '' and choice != '':
+                    category_counts[category][choice] += 1
     return category_counts
 
 
@@ -133,7 +136,7 @@ def get_ui_counts():
 
             for i in range(part_two_data.__len__()):
                 part_two_slice = part_two_data[i]
-                correct_image = Path(part_two_slice["correct_path"]).stem.__str__()
+                correct_image = Path(part_two_slice["correct_path"].replace('\\', '/')).stem.__str__()
                 position = part_two_slice["position"]
                 perm_counts[correct_image][position] += 1
     return perm_counts
@@ -141,15 +144,20 @@ def get_ui_counts():
 
 def next_video_id_list(max_run=2):
     counts = get_video_counts()
+    print(counts)
     entries = {}
     for q in range(len(counts)):
         category = part_two_categories[q]
         minc = min(counts[category].values())
+        print("min_val: ", minc)
         candidates = [pos for pos in range(3) if counts[category][pos] == minc]
+        print(candidates)
         random.shuffle(candidates)
         chosen = candidates[0] if not entries else next((c for c in candidates
                                                      if entries.get(-1) != c or max_run <= 1), candidates[0])
+        print("selected: ", chosen)
         entries[category] = chosen
+    print(entries)
     return entries
 
 def next_video_permutation_list(image_paths):
@@ -343,8 +351,9 @@ async def get_image_paths_two():
             video_name = ""
             for i in range(len(file_list)):
                 file = file_list[i]
-                if i == result["choice"]:
-                    video_name = Path(file).stem + ".mp4"
+                if i == 0:
+                    file_base = Path(file).stem
+                    video_name = file_base[:-1] + str(result["choice"]) + ".mp4"
                 image_path = os.path.join(base_path, file)
                 image_paths.append(os.path.abspath(image_path))
             permutation = next_video_permutation_list(image_paths)
@@ -357,7 +366,7 @@ async def get_image_paths_two():
                 "permutation": permutation,
                 "thumbnail": thumbnail,
             }
-            print(result["choice"], permutation)
+            print(video_name, result["choice"], permutation)
             data.append(all_data)
             count += 1
 
