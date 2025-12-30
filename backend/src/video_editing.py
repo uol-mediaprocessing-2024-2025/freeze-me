@@ -33,7 +33,7 @@ from path_manager import get_preview_mask_frame_name
 from image_editing import write_images
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device("cpu")
+# device = torch.device("cpu")
 
 print("PyTorch version:", torch.__version__)
 print("Torchvision version:", torchvision.__version__)
@@ -192,6 +192,7 @@ async def add_new_point_to_segmentation(video_id, point_x, point_y, point_type, 
         print(e.__traceback__)
         print(traceback.format_exc())
 
+
 async def get_masked_video(video_id):
     try:
         load_start = timer()
@@ -206,7 +207,8 @@ async def get_masked_video(video_id):
 
         ids = [[] for _ in range(len(frames_paths))]
         masks = [[] for _ in range(len(frames_paths))]
-        for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state, start_frame_idx=0):
+        for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state,
+                                                                                        start_frame_idx=0):
             ids[out_frame_idx] = np.array(out_obj_ids)
             masks[out_frame_idx] = (out_mask_logits > 0.0).cpu().numpy()
 
@@ -266,7 +268,8 @@ async def get_masked_video(video_id):
         print("---------------------")
 
         for o in range(0, len(foreground_frames[0])):
-            foreground_paths = [f'{get_foreground_temp_image_path(video_id, f, o)}' for f in range(0, len(foreground_frames))]
+            foreground_paths = [f'{get_foreground_temp_image_path(video_id, f, o)}' for f in
+                                range(0, len(foreground_frames))]
             foreground_object_frames = np.array(foreground_frames)[:, o]
             write_images(foreground_paths, foreground_object_frames)
 
@@ -277,7 +280,6 @@ async def get_masked_video(video_id):
         print(f"Finished saving all images.")
         print("--- Time: %s seconds ---" % (saving_end - segmented_frames_end))
         print("---------------------")
-
 
         print("#####################")
         print("--- TOTAL TIME: %s seconds ---" % (saving_end - load_start))

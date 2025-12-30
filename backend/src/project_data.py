@@ -33,7 +33,8 @@ class Step(Enum):
 
 def create_project(video_id):
     workflow_data = {CURRENT_STEP: Step.VIDEO_EDITING.value, AVAILABLE_STEPS: [Step.VIDEO_EDITING.value], ID: video_id,
-                     MOTION_BLUR_DATA_KEY: [], TRACKED_OBJECT_COUNT: 0, BACKGROUND_TYPE: BackgroundType.VIDEO_FRAME.value}
+                     MOTION_BLUR_DATA_KEY: [], TRACKED_OBJECT_COUNT: 0,
+                     BACKGROUND_TYPE: BackgroundType.VIDEO_FRAME.value}
     print(video_id)
     print(get_workflow_data_path(video_id))
     save_data(video_id, workflow_data)
@@ -77,10 +78,12 @@ def set_motion_blur_metadata(video_id, motion_blur_data):
 def get_motion_blur_data(video_id):
     return load_data(video_id)[MOTION_BLUR_DATA_KEY]
 
+
 def set_tracked_objects_count(video_id, tracked_objects_count):
     data = load_data(video_id)
     data[TRACKED_OBJECT_COUNT] = tracked_objects_count
     save_data(video_id, data)
+
 
 def get_tracked_objects_count(video_id):
     return load_data(video_id)[TRACKED_OBJECT_COUNT]
