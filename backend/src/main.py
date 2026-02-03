@@ -2,14 +2,11 @@ import os
 import traceback
 from typing import Annotated
 
-
 import static_ffmpeg
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
-from timeit import default_timer as timer
-
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
@@ -22,12 +19,9 @@ from video_editing import cut_video
 from video_editing import get_frame
 from path_manager import create_all_paths, get_multiple_instances_image, get_motion_blur_image, delete_project, \
     get_upload_path, get_preview_mask_frame_name
-from image_editing import create_multiple_instance_effect, create_multiple_instance_effect_reversed, \
-    create_multiple_instance_effect_unified
-from image_editing import create_multiple_instance_effect_middle, create_motion_blur_image, create_action_line_effect
+from image_editing import create_multiple_instance_effect_unified, create_motion_blur_image, create_action_line_effect
 from image_editing import save_background
 from image_effects import process_effect_request
-
 
 from project_data import get_all_projects, get_background_type
 from project_data import get_step_data
@@ -35,7 +29,6 @@ from project_data import create_project
 from project_data import set_current_step
 from project_data import Step
 from project_data import BackgroundType, set_background_type
-
 
 app = FastAPI()
 static_ffmpeg.add_paths()
@@ -65,10 +58,12 @@ async def upload_video(file: UploadFile = File(...)):
             content={"message": "Failed to get upload video", "error": str(e)},
         )
 
+
 @app.get("/get-video")
 async def get_video(video_id: str):
     video_path = get_upload_path(video_id)
     return FileResponse(video_path, media_type="video/mp4")
+
 
 @app.post("/upload-background")
 async def upload_background(file: UploadFile = File(...), video_id: str = Form(...)):
@@ -82,6 +77,7 @@ async def upload_background(file: UploadFile = File(...), video_id: str = Form(.
             content={"message": "Failed to upload background", "error": str(e)},
         )
 
+
 @app.post("/set-background-type")
 async def set_current_background_type(video_id: str = Form(...), background_type: str = Form(...)):
     print(f"Setting background type to: {background_type}")
@@ -94,7 +90,8 @@ async def set_current_background_type(video_id: str = Form(...), background_type
     else:
         return JSONResponse(
             status_code=500,
-            content={"message": "Failed to set background type", "error": background_type + "is not a valid background_type."},
+            content={"message": "Failed to set background type",
+                     "error": background_type + "is not a valid background_type."},
         )
     set_background_type(video_id, background)
     return JSONResponse(status_code=200, content=video_id)
@@ -113,7 +110,7 @@ async def get_current_background_type(video_id):
 
 
 @app.get("/get-motion-blur-preview")
-async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_transparency: float, frame_skip: int):
+async def get_motion_blur_preview(video_id: str, blur_strength: float, blur_transparency: float, frame_skip: int):
     try:
         print(f"Getting motion blur preview for: {video_id}")
         print("Using settings (strength, transparency, frame_skip): ", blur_strength, blur_transparency, frame_skip)
@@ -128,6 +125,7 @@ async def get_motion_blur_preview(video_id: str, blur_strength: float , blur_tra
             content={"message": "Failed to create motion blur preview", "error": str(e)},
         )
 
+
 @app.get("/video-details")
 async def video_details(video_id: str):
     try:
@@ -140,6 +138,7 @@ async def video_details(video_id: str):
             content={"message": "Failed to get video details", "error": str(e)},
         )
 
+
 @app.get("/total-frame-count")
 async def total_frame_count(video_id: str):
     try:
@@ -150,6 +149,7 @@ async def total_frame_count(video_id: str):
             status_code=500,
             content={"message": "Failed to get video details", "error": str(e)},
         )
+
 
 @app.get("/initialize-segmentation")
 async def get_first_frame_of_video(video_id: str):
@@ -163,16 +163,21 @@ async def get_first_frame_of_video(video_id: str):
             content={"message": "Failed to get first frame", "error": str(e)},
         )
 
+
 @app.post("/add-point")
-async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()], point_y: Annotated[float, Form()], point_type: Annotated[int, Form()], frame_num: Annotated[int, Form()], object_num: Annotated[int, Form()]):
+async def add_point_to_video(video_id: Annotated[str, Form()], point_x: Annotated[float, Form()],
+                             point_y: Annotated[float, Form()], point_type: Annotated[int, Form()],
+                             frame_num: Annotated[int, Form()], object_num: Annotated[int, Form()]):
     try:
-        masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num, object_num)
+        masked_frame = await add_new_point_to_segmentation(video_id, point_x, point_y, point_type, frame_num,
+                                                           object_num)
         return FileResponse(masked_frame, media_type="image/png")
     except Exception as e:
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to get first frame", "error": str(e)},
         )
+
 
 @app.get("/get-segmentation-result")
 async def get_segmentation_result(video_id):
@@ -187,9 +192,10 @@ async def get_segmentation_result(video_id):
             content={"message": "Failed to get first frame", "error": str(e)},
         )
 
-@app.post("/cut-video")
-async def cut_video_endpoint(video_id: Annotated[str, Form()], start_time: Annotated[float, Form()], end_time: Annotated[float, Form()]):
 
+@app.post("/cut-video")
+async def cut_video_endpoint(video_id: Annotated[str, Form()], start_time: Annotated[float, Form()],
+                             end_time: Annotated[float, Form()]):
     try:
         print(f"Cutting video: {video_id}")
         print(f"From: {start_time}, To: {end_time}")
@@ -205,6 +211,7 @@ async def cut_video_endpoint(video_id: Annotated[str, Form()], start_time: Annot
             status_code=500,
             content={"message": "Fehler beim Schneiden des Videos", "error": str(e)}
         )
+
 
 @app.get("/video-ids")
 async def get_all_video_ids():
@@ -222,6 +229,7 @@ async def get_all_video_ids():
             content={"message": "Fehler beim Laden der VideoIds", "error": str(e)}
         )
 
+
 @app.get("/project-data")
 async def get_project_progress(video_id: str):
     try:
@@ -238,14 +246,15 @@ async def get_project_progress(video_id: str):
             content={"message": "Fehler beim Laden der VideoIds", "error": str(e)}
         )
 
+
 @app.delete("/delete-video")
 async def delete_video(video_id: str):
-
     try:
         if delete_project(video_id):
             return JSONResponse(status_code=200, content={"message": f"Projekt {video_id} wurde erfolgreich gelöscht"})
         else:
-            return JSONResponse(status_code=404, content={"message": "Projekt nicht gefunden oder konnte nicht gelöscht werden"})
+            return JSONResponse(status_code=404,
+                                content={"message": "Projekt nicht gefunden oder konnte nicht gelöscht werden"})
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -265,6 +274,7 @@ async def get_frame_of_video(video_id: str, frame_num: int):
             content={"message": "Failed to get first frame", "error": str(e)},
         )
 
+
 @app.get("/get-pref-segmented-frame")
 async def get_segmented_frame_of_video(video_id: str, frame_num: int):
     try:
@@ -282,21 +292,23 @@ async def get_segmented_frame_of_video(video_id: str, frame_num: int):
 
 @app.get("/effect/multiple-instances/")
 async def multiple_instance_effect(
-    video_id: str,
-    instance_count: int,
-    frame_skip: int,
-    transparency_mode: str = "uniform",
-    transparency_strength: float = 0.5,
-    frame_reference: str = "last",  # "first", "middle" oder "last"
-    frame_offset: int = 0  # Optionaler Offset für den Referenzframe
+        video_id: str,
+        instance_count: int,
+        frame_skip: int,
+        transparency_mode: str = "uniform",
+        transparency_strength: float = 0.5,
+        frame_reference: str = "last",  # "first", "middle" oder "last"
+        frame_offset: int = 0  # Optionaler Offset für den Referenzframe
 ):
     print(f"Creating multiple instances effect for: {video_id}")
-    print(f"Using settings (instance_count,frame_skip,transparency_mode,transparency_strength,frame_reference,frame_offset): {instance_count}, {frame_skip}, {transparency_mode}, {transparency_strength}, {frame_reference}, {frame_offset}")
+    print(
+        f"Using settings (instance_count,frame_skip,transparency_mode,transparency_strength,frame_reference,frame_offset): {instance_count}, {frame_skip}, {transparency_mode}, {transparency_strength}, {frame_reference}, {frame_offset}")
     try:
         create_all_paths(video_id)
         output_path = get_multiple_instances_image(video_id, "multiple_instances_result.png")
 
-        create_multiple_instance_effect_unified(video_id, output_path, instance_count, frame_skip, frame_reference, transparency_mode, transparency_strength, frame_offset)
+        create_multiple_instance_effect_unified(video_id, output_path, instance_count, frame_skip, frame_reference,
+                                                transparency_mode, transparency_strength, frame_offset)
 
         if not output_path.exists():
             raise FileNotFoundError(f"Das Bild wurde nicht unter {output_path} gespeichert.")
@@ -308,14 +320,15 @@ async def multiple_instance_effect(
 
 @app.get("/effect/action-lines/")
 async def action_line_effect(
-    video_id: str,
-    thickness: int,
-    start_percentage: int,
-    smoothing_factor: int,
-    color: str
+        video_id: str,
+        thickness: int,
+        start_percentage: int,
+        smoothing_factor: int,
+        color: str
 ):
     print(f"Creating action line effect for: {video_id}")
-    print(f"Using settings (thickness,start_percentage,smoothing_factor,color): {thickness}, {start_percentage}, {smoothing_factor}, {color}")
+    print(
+        f"Using settings (thickness,start_percentage,smoothing_factor,color): {thickness}, {start_percentage}, {smoothing_factor}, {color}")
     try:
         create_all_paths(video_id)
         create_action_line_effect(video_id, thickness, start_percentage, smoothing_factor, color)
@@ -331,9 +344,9 @@ async def action_line_effect(
         print(traceback.print_exception(type(e), e, e.__traceback__))
         return {"status": "error", "message": str(e)}
 
+
 @app.get("/final-effects-preview")
 async def get_final_effects_preview(video_id: str, effect_type: str):
-
     try:
         set_current_step(video_id, Step.AFTER_EFFECT)
         if effect_type == "motion_blur":
@@ -353,10 +366,11 @@ async def get_final_effects_preview(video_id: str, effect_type: str):
             content={"message": f"Failed to load final effects preview: {str(e)}"},
         )
 
-@app.post("/apply-final-effects")
-async def apply_final_effects(video_id: Annotated[str, Form()], effect_type: Annotated[str, Form()], brightness: Annotated[float, Form()],
-                              contrast: Annotated[float, Form()], saturation: Annotated[float, Form()]):
 
+@app.post("/apply-final-effects")
+async def apply_final_effects(video_id: Annotated[str, Form()], effect_type: Annotated[str, Form()],
+                              brightness: Annotated[float, Form()],
+                              contrast: Annotated[float, Form()], saturation: Annotated[float, Form()]):
     try:
         if effect_type == "motion-blur":
             image_path = get_motion_blur_image(video_id, "motion_blur.png")
