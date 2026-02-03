@@ -41,3 +41,6 @@ coverage
 /backend/src/configs
 /backend/notebook/.ipynb_checkpoints
 /backend/src/videos
+
+!/study-tool/video_candidates/part_one/*.mp4
+!/study-tool/video_candidates/part_two/*.mp4

@@ -22,7 +22,12 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
+results
 results/*
 results.json
 clips
 .env
+part_one.csv
+part_one_answers.json
+part_two.csv
+part_two_answers.json
