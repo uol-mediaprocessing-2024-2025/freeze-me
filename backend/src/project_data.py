@@ -99,8 +99,6 @@ def load_data(video_id):
 
 
 def save_data(video_id, data):
-    path = get_workflow_data_path(video_id)
-    if not Path(path).exists():
-        Path(path).touch()
-    f = open(path, "w")
-    f.write(json.dumps(data))
+    path = Path(get_workflow_data_path(video_id))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data), encoding="utf-8")

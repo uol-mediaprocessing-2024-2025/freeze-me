@@ -37,6 +37,10 @@ def get_config_path():
             path = prefix_path.joinpath(CONFIG_PATH).joinpath("sam2.1_hiera_t.yaml").absolute()
         case _:
             path = prefix_path.joinpath(CONFIG_PATH).joinpath("sam2.1_hiera_s.yaml").absolute()
+
+    if path.__str__()[0] != "/":
+        path = Path("/" + prefix_path.__str__())
+    print(path)
     return path.as_posix()
 
 

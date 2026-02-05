@@ -5,8 +5,10 @@ python-multipart
 ffmpeg-python
 static-ffmpeg
 opencv-python
-torch
-torchvision
+# Please install these with conda as shown in the README
+#torch
+#torchvision
+#torchaudio
 matplotlib
 numpy
 sam2

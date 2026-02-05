@@ -72,6 +72,8 @@ async def upload_background(file: UploadFile = File(...), video_id: str = Form(.
         background_path = await save_background(file, video_id)
         return FileResponse(background_path, media_type="image/jpeg")
     except Exception as e:
+        print(e)
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to upload background", "error": str(e)},

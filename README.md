@@ -7,6 +7,7 @@ Freeze Me! is a project, in which we want to create dynamic, motion-illustrative
 - **Node.js** (for the frontend) - [Download here](https://nodejs.org/en/download/)
 - **Python 3.10+** (for the backend) - [Download here](https://www.python.org/downloads/)
 - **Conda** (for environment management) - [Install here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/)
+- **FFmpeg** (for video editing) - install with apt
 
 Recommended, but optional:
 
@@ -32,11 +33,7 @@ Recommended, but optional:
    conda activate simple-webapp
    ```
 
-3. **Install dependencies:**
-   ```sh
-   pip install -r requirements.txt
-   ```
-4. **Install Sam2**
+3. **Install Sam2**
    > Setup Sam2 and the correct pytorch-cuda version (if used with gpu)
    ```sh
    conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
@@ -45,6 +42,11 @@ Recommended, but optional:
    > folder inside the backend folder.
    ```
    https://github.com/facebookresearch/sam2?tab=readme-ov-file#sam-21-checkpoints
+   ```
+   
+4. **Install dependencies:**
+   ```sh
+   pip install -r requirements.txt
    ```
    
 5. **Setup GPU Usage**
@@ -67,12 +69,23 @@ Recommended, but optional:
    cd frontend
    ```
 
-2. **Install the dependencies:**
+2. **Ensure that node has correct version (>20) if not install newer**
+   ```sh
+      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+   ```
+   ```sh
+      \. "$HOME/.nvm/nvm.sh"
+   ```
+   ```sh
+      nvm install 24
+   ```
+
+3. **Install the dependencies:**
    ```sh
    npm install
    ```
 
-3. **Start the development server:**
+4. **Start the development server:**
    ```sh
    npm run dev
    ```

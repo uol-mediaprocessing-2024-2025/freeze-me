@@ -50,7 +50,21 @@ if device.type == "cuda":
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
 
-predictor: SAM2VideoPredictor = build_sam2_video_predictor(get_config_path(), get_checkpoint_path(), device=device)
+from hydra import initialize_config_dir, compose
+from hydra.core.global_hydra import GlobalHydra
+
+cfg_file = Path(get_config_path()).resolve()
+
+if GlobalHydra.instance().is_initialized():
+    GlobalHydra.instance().clear()
+
+with initialize_config_dir(config_dir=str(cfg_file.parent), version_base=None):
+    predictor: SAM2VideoPredictor = build_sam2_video_predictor(
+        cfg_file.stem,
+        get_checkpoint_path(),
+        device=device,
+        hydra_overrides=[]
+    )
 
 colors = ['#FF1493', '#00BFFF', '#FF6347', '#FFD700']
 mask_annotator = sv.MaskAnnotator(

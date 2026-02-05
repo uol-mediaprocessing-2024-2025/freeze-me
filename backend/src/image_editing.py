@@ -33,7 +33,7 @@ kernel_list[:, :] = None
 
 
 def get_device():
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    return "cpu"
 
 
 async def save_background(file: UploadFile, video_id):
